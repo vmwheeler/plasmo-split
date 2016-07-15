@@ -39,7 +39,7 @@ FCLIBS=-static $(shell arprec-config --fmainlib) $(shell arprec-config --fclibs)
 # common defs
 #DEFINES = -DNMAX_COEFFS=500 -DCHECK_SURFACE_MODE -DDATA_DIR="'./'"
 #DEFINES = -DNMAX_COEFFS=700 -DCHECK_SURFACE_MODE -DDATA_DIR="'/home/vmwheeler/Code/bhfield-121005/src/nkdata/'"
-DEFINES = -DNMAX_COEFFS=700 -DCHECK_SURFACE_MODE -DDATA_DIR="'/home/vmwheeler/Code/ShellMie/bhfield/nkdata/'"
+DEFINES = -DNMAX_COEFFS=700 -DCHECK_SURFACE_MODE -DDATA_DIR="'/home/vmwheeler/Code/plasmo-split/bhfield/nkdata/'"
 #DEFINES = -DNMAX_COEFFS=700 -DCHECK_SURFACE_MODE -DDATA_DIR="'/home/vmwheeler/Code/bhfield-thermo-plasmo/nkdata/'"
 
 # ARP options

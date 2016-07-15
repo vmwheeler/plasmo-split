@@ -7,7 +7,7 @@ f = open("./UabsVr.dat")
 wavel = f.readline()
 wavel = float(wavel) #in micron
 
-data = np.loadtxt("./UabsVr.dat",skiprows=2)
+data = np.loadtxt("./UabsVr.dat",skiprows=4)
 
 #check that this integrates to proper absorption cross section
 rads = data[:,0] # in meters
@@ -25,20 +25,18 @@ for rad,Uabs in zip(rads,Uabss):
 
 
 UABS_T = simps(Uabssr2,rads)
-UABS_nor = simps(Uabss,rads)
-I0 = 0.5*np.sqrt(EPSVAC/MU)*1.
 AP = np.pi*RADCOT*RADCOT
-MYQABS = UABS_T/AP/I0
+MYQABS = UABS_T/AP
 
 print "MYQABS = " + str(MYQABS)
 
 
 plt.figure()
 plt.plot(rads*1.E9,Uabss)
-plt.title('Angle-averaged radial power absorption profile \n '
+plt.title('Angle-averaged radial power absorption per unit irradiance \n '
   + 'of a Au-CeO_2 core-shell nanoparticle \n '
   + 'under ' + str(wavel*1.0E3) + 'nm wavelength irradiation')
 plt.xlabel('r [nm]')
-plt.ylabel('U_abs [W m^-3 um^-1]')
+plt.ylabel('U_abs [(W m^-3) (W m^-2)^-1]')
 plt.show()
 

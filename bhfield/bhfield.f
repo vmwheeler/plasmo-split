@@ -146,7 +146,7 @@ C (11) x=1.0D0 -> x='1.0D0'
 C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 C     Declare all relevant physical constants
 C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      WAVEL = 1.50D0
+      WAVEL = 0.507D0
       RADCOR = 0.03D0
       RADCOT = 0.06D0
       PI=ACOS(-1.0D0)
@@ -172,7 +172,8 @@ C      FILNAM(2)='Ag_palik.nk'
 C     shell
 C      FILNAM(3)='test_material.nk'
 C      FILNAM(3)='SiO2_palik.nk'
-       FILNAM(3)='CeO2_patsalas.nk'
+      FILNAM(3)='CeO2_patsalas.nk'
+C       FILNAM(3)='vac.nk'
 C      FILNAM(3)='Ag_palik.nk'
       WLFAC(3)=1.0D-3
       DO 901 I=1,3
@@ -232,13 +233,12 @@ C
       
       CALL IntegrateUABS(RADCOR,RADCOT,WAVEL,
      &                   REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
-     &                   EPSVAC,OMEGA,UABS_T)
+     &                   EPSVAC,OMEGA,MU,UABS_T)
       
       PRINT *, "UABS_T = ", UABS_T
       
-      I0 = 0.5*SQRT(EPSVAC/MU)*1.
       AP = PI*RADCOT*RADCOT
-      MYQABS = UABS_T/AP/I0*1.E-6
+      MYQABS = UABS_T/AP*1.E-6
       
       PRINT *, ''
       PRINT *, 'Check full integral over sphere against Qabs'
@@ -253,7 +253,7 @@ C
       PRINT *, "Finally time to integrate some shells!"
       CALL IntegrateShells(RADCOR,RADCOT,WAVEL,
      &                   REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
-     &                   EPSVAC,OMEGA,NSHELLS)
+     &                   EPSVAC,OMEGA,MU,NSHELLS)
       
       
       STOP
@@ -264,12 +264,12 @@ C  The goal of this whole mess:
 C *********************************************************************
       subroutine IntegrateShells(RADCOR,RADCOT,WAVEL,
      &                   REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
-     &                   EPSVAC,OMEGA,NSHELLS)
+     &                   EPSVAC,OMEGA,MU,NSHELLS)
      
       implicit none
      
       REAL*8 RADCOR,RADCOT,WAVEL,EPSVAC,OMEGA,RSTEP
-      REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2,RAD
+      REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2,RAD,MU
       integer NSHELLS,I
       REAL*8 UABS(NSHELLS),RADS(NSHELLS)
      
@@ -281,7 +281,7 @@ C *********************************************************************
         RADS(I) = DBLE(I-1)*RSTEP       
         CALL IntegrateUABSShell(RADCOR,RADCOT,WAVEL,
      &                         REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
-     &                         EPSVAC,OMEGA,UABS(I),RADS(I))
+     &                         EPSVAC,OMEGA,MU,UABS(I),RADS(I))
         
         
   100 CONTINUE
@@ -291,6 +291,8 @@ C *********************************************************************
   701 FORMAT(3E13.5,E13.5)
       PRINT *, "resulting field"
       WRITE(29,*) WAVEL
+      WRITE(29,*) 'Absorption per volume per unit irradiance'
+      WRITE(29,*) '  units [=] (W m^-3) (W m^-2)^-1 '
       WRITE(29,*) '-----------'
       DO 29 I=1,NSHELLS
         PRINT *, UABS(I)
@@ -311,14 +313,14 @@ C *********************************************************************
   
       SUBROUTINE IntegrateUABSShell(RADCOR,RADCOT,WAVEL,
      &                         REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
-     &                         EPSVAC,OMEGA,UABS_T,RAD)
+     &                         EPSVAC,OMEGA,MU,UABS_T,RAD)
 
       implicit none
 
       integer ndim, ncomp, nvec, last, seed, mineval, maxeval
       cubareal epsrel, epsabs
       
-      real*8 userdata(11),UABS_T
+      real*8 userdata(12),UABS_T
       
       parameter (ndim = 3)
       parameter (ncomp = 1)
@@ -363,7 +365,7 @@ C *********************************************************************
       integer key
       parameter (key = 0)
 
-      REAL*8 RADCOR,RADCOT,WAVEL,EPSVAC,OMEGA
+      REAL*8 RADCOR,RADCOT,WAVEL,EPSVAC,OMEGA,MU
       REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2,RAD
       
       external diffShell
@@ -386,6 +388,7 @@ C *********************************************************************
       userdata(9) = EPSVAC
       userdata(10) = OMEGA
       userdata(11) = RAD
+      userdata(12) = MU
    
       
  !     call getenv("CUBAVERBOSE", env)
@@ -420,8 +423,8 @@ C *********************************************************************
         implicit none
         integer ndim, ncomp, IWHERE
         cubareal xx(*), ff(*)
-        real*8 userdata(11), pi
-        REAL*8 RADCOR,RADCOT,WAVEL,XP(3),EPSVAC,OMEGA,RAD
+        real*8 userdata(12), pi
+        REAL*8 RADCOR,RADCOT,WAVEL,XP(3),EPSVAC,OMEGA,RAD,MU,I0
         REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2,EFSQ,UABS
         COMPLEX*16 EC(3),HC(3)
         parameter (pi = 3.14159265358979323846D0)
@@ -441,6 +444,7 @@ C *********************************************************************
         EPSVAC = userdata(9)
         OMEGA = userdata(10)
         RAD = userdata(11)
+        MU = userdata(12)
         
         !PRINT *, 'moopsy'
         !print *, 'WAVEL: ', WAVEL
@@ -460,14 +464,15 @@ C *********************************************************************
         !print *, XP(1),XP(2),XP(3)
         CALL FIELDVMW(WAVEL,REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
      1                 RADCOR,RADCOT,XP,IWHERE,EC,HC)
+        I0 = 0.5*SQRT(EPSVAC/MU)*1.
         EFSQ=ABS(EC(1))**2.0D0+ABS(EC(2))**2.0D0+ABS(EC(3))**2.0D0
         IF(IWHERE.EQ.1) THEN
 C
-          UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ
+          UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ/I0
 C
          ELSE IF(IWHERE.EQ.2) THEN
 C
-          UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ
+          UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ/I0
 C
          ELSE
 C
@@ -487,14 +492,14 @@ C *********************************************************************
   
       SUBROUTINE IntegrateUABS(RADCOR,RADCOT,WAVEL,
      &                         REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
-     &                         EPSVAC,OMEGA,UABS_T)
+     &                         EPSVAC,OMEGA,MU,UABS_T)
 
       implicit none
 
       integer ndim, ncomp, nvec, last, seed, mineval, maxeval
       cubareal epsrel, epsabs
       
-      real*8 userdata(10),UABS_T
+      real*8 userdata(11),UABS_T
       
       parameter (ndim = 3)
       parameter (ncomp = 1)
@@ -539,7 +544,7 @@ C *********************************************************************
       integer key
       parameter (key = 0)
 
-      REAL*8 RADCOR,RADCOT,WAVEL,EPSVAC,OMEGA
+      REAL*8 RADCOR,RADCOT,WAVEL,EPSVAC,OMEGA,MU
       REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2
       
       external diffUABS
@@ -561,6 +566,7 @@ C *********************************************************************
       userdata(8) = RADCOT
       userdata(9) = EPSVAC
       userdata(10) = OMEGA
+      userdata(11) = MU
       
 C      PRINT *, 'moopsy'
 C      print *, 'WAVEL: ', WAVEL
@@ -602,8 +608,8 @@ C************************************************************************
         implicit none
         integer ndim, ncomp, IWHERE
         cubareal xx(*), ff(*)
-        real*8 userdata(10), pi
-        REAL*8 RADCOR,RADCOT,WAVEL,XP(3),EPSVAC,OMEGA
+        real*8 userdata(11), pi
+        REAL*8 RADCOR,RADCOT,WAVEL,XP(3),EPSVAC,OMEGA,I0,MU
         REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2,EFSQ,UABS
         COMPLEX*16 EC(3),HC(3)
         parameter (pi = 3.14159265358979323846D0)
@@ -622,6 +628,7 @@ C************************************************************************
         RADCOT = userdata(8)
         EPSVAC = userdata(9)
         OMEGA = userdata(10)
+        MU = userdata(11)
         
         !PRINT *, 'moopsy'
         !print *, 'WAVEL: ', WAVEL
@@ -640,14 +647,15 @@ C************************************************************************
         !print *, XP(1),XP(2),XP(3)
         CALL FIELDVMW(WAVEL,REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
      1                 RADCOR,RADCOT,XP,IWHERE,EC,HC)
+        I0 = 0.5*SQRT(EPSVAC/MU)*1.
         EFSQ=ABS(EC(1))**2.0D0+ABS(EC(2))**2.0D0+ABS(EC(3))**2.0D0
         IF(IWHERE.EQ.1) THEN
 C
-          UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ
+          UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ/I0
 C
          ELSE IF(IWHERE.EQ.2) THEN
 C
-          UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ
+          UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ/I0
 C
          ELSE
 C
