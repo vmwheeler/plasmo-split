@@ -5,7 +5,8 @@ LIBS = -lm libcuba.a
 
 OBJ = suzuki.o
 
-#CUBASTUFF = -L/home/vmwheeler/Software/local/lib -lcuba -lm
+CUBALIBS = -L/home/vmwheeler/Software/local/lib -lcuba -lm
+CUBAINC = -I/home/vmwheeler/Software/local/include
 
 # Fortran compiler flags. 
 #FCFLAGS=
@@ -34,8 +35,8 @@ all: $(MAIN).exe
 
 
 %.exe: %.f $(OBJ)
-	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(LIBS) -g -static -O2 -Wall -o $@ $^ libcuba.a
-
+#	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(LIBS) -g -static -O2 -Wall -o $@ $^ libcuba.a
+	$(FC) -cpp $(DEFINES) $(CUBAINC) -g -static -O2 -Wall -o $@ $^ $(CUBALIBS)
 clean:
 	rm -f *o *exe
 
