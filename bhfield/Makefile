@@ -16,7 +16,7 @@ DEFINES = -DNMAX_COEFFS=700 -DCHECK_SURFACE_MODE -DDATA_DIR="'/home/vmwheeler/Co
 # DBOPT = -DCHECK_UNDERFLOW -DCHECK_TANGENTIAL_CONTINUITY -DDEBUG_BESSEL -DOUTPUT_YBESSE -fbounds-check -O -Wuninitialized -ffpe-trap=invalid,zero,overflow -fbacktrace -g
 DBOPT = -DCHECK_UNDERFLOW -DCHECK_TANGENTIAL_CONTINUITY -DDEBUG_BESSEL -fbounds-check
 
-MAIN = test_main
+MAIN = spectral_shells
 
 # clear up the default gnu make
 .DEFAULT:
@@ -28,14 +28,13 @@ MAIN = test_main
 %.exe: %.o
 
 %.o: %.f
-	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(DBOPT) -c -O2 -Wall -o $@ $+ 
+	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(DBOPT) -c -O2 -Wall -o $@ $^ 
 
-# all: bhfield-arp.exe bhfield-std.exe bhfield-arp-db.exe bhfield-std-db.exe
 all: $(MAIN).exe
 
 
 %.exe: %.f $(OBJ)
-	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(LIBS) -g -static -O2 -Wall -o $@ $+ libcuba.a
+	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(LIBS) -g -static -O2 -Wall -o $@ $^ libcuba.a
 
 clean:
 	rm -f *o *exe
