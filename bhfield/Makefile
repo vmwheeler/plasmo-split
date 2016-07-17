@@ -1,7 +1,9 @@
 FC=gfortran
 
 #LIBLOCS = -L/usr/lib64
-LIBS = -lm
+LIBS = -lm libcuba.a
+
+OBJ = suzuki.o
 
 #CUBASTUFF = -L/home/vmwheeler/Software/local/lib -lcuba -lm
 
@@ -14,22 +16,26 @@ DEFINES = -DNMAX_COEFFS=700 -DCHECK_SURFACE_MODE -DDATA_DIR="'/home/vmwheeler/Co
 # DBOPT = -DCHECK_UNDERFLOW -DCHECK_TANGENTIAL_CONTINUITY -DDEBUG_BESSEL -DOUTPUT_YBESSE -fbounds-check -O -Wuninitialized -ffpe-trap=invalid,zero,overflow -fbacktrace -g
 DBOPT = -DCHECK_UNDERFLOW -DCHECK_TANGENTIAL_CONTINUITY -DDEBUG_BESSEL -fbounds-check
 
+MAIN = test_main
 
 # clear up the default gnu make
 .DEFAULT:
 .SUFFIXES:
 .SUFFIXES: .f .o .exe
 # .PRECIOUS: %.o %-arp.o %-arp-bd.o
-.PHONY: all clean ftnchek allclean
-%.o: %.f
+.PHONY: all clean allclean
+
 %.exe: %.o
 
-# all: bhfield-arp.exe bhfield-std.exe bhfield-arp-db.exe bhfield-std-db.exe
-all: bhfield-std-db.exe
+%.o: %.f
+	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(DBOPT) -c -O2 -Wall -o $@ $+ 
 
-%-std-db.exe: %.f
-	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(LIBS) $(DBOPT) -g -static -O2 -Wall -o $@ $+ libcuba.a
-#	$(FC) -cpp $(DEFINES) $(CUBASTUFF) $(DBOPT) -static -O2 -Wall -o $@ $+
+# all: bhfield-arp.exe bhfield-std.exe bhfield-arp-db.exe bhfield-std-db.exe
+all: $(MAIN).exe
+
+
+%.exe: %.f $(OBJ)
+	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(LIBS) -g -static -O2 -Wall -o $@ $+ libcuba.a
 
 clean:
 	rm -f *o *exe
