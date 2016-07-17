@@ -1,6 +1,5 @@
 FC=gfortran
 
-#LIBLOCS = -L/usr/lib64
 LIBS = -lm libcuba.a
 
 OBJ = suzuki.o
