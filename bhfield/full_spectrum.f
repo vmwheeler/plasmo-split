@@ -162,6 +162,10 @@ C
       PRINT *, "AND now the blackbody intensity there at T=1000"
       PRINT *, "  ", IB
       
+      UPPER = 
+C     integrate over blackbody spectrum
+      CALL INTEGRATEBB(WAVEL,TEMP,UPPER)
+      
       STOP
       END
 
@@ -357,9 +361,8 @@ C ***********************************************************************
       REAL*8 c_second_radiation
       ! -- Local declarations --
 
-      real*8 beta, pi
-      pi=ACOS(-1.0D0)
-
+      real*8 beta
+      
       lambda_m = lambda*1.0D-6
       
       PRINT *, "WAVEL in BB: ", lambda_m
@@ -371,5 +374,38 @@ C ***********************************************************************
 
       
 
+      return
+      end
+      
+      
+C ***********************************************************************
+C Function to calculate temperature derivative of the 
+C  blackbody emissive power at a given temperature
+C  as a function of wavelength (in micron)
+C ***********************************************************************
+      
+      SUBROUTINE BBINTENSITYDT(lambda, t, ebdt) 
+
+      implicit none
+
+
+      real*8 lambda, t, lambda_m
+      real*8 eb
+      REAL*8 c_first_radiation
+      REAL*8 c_second_radiation
+      ! -- Local declarations --
+
+      real*8 beta
+
+      lambda_m = lambda*1.0D-6
+      
+      PRINT *, "WAVEL in BB: ", lambda_m
+      
+      c1 = 3.74177118e-16
+      c2 = 14387.75225e-06
+
+      dbdt = (c1*c2*E**(c2/(t*lambda_m)))
+    &  /((-1.0D0 + E**(c2/(t*lambda_m)))**2*T**2*lambda_m**6)
+    
       return
       end

@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[      2458,         91]
-NotebookOptionsPosition[      2008,         70]
-NotebookOutlinePosition[      2345,         85]
-CellTagsIndexPosition[      2302,         82]
+NotebookDataLength[      5225,        176]
+NotebookOptionsPosition[      4545,        148]
+NotebookOutlinePosition[      4882,        163]
+CellTagsIndexPosition[      4839,        160]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -66,10 +66,88 @@ Cell[BoxData[
 
 Cell[BoxData["0.24583700700023742`"], "Output",
  CellChangeTimes->{{3.677876178629054*^9, 3.6778761941125917`*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{"D", "[", 
+  RowBox[{
+   FractionBox["c1", 
+    RowBox[{
+     SuperscriptBox["\[Lambda]", "5"], 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"Exp", "[", 
+        FractionBox["c2", 
+         RowBox[{"\[Lambda]", " ", "T"}]], "]"}], "-", "1"}], ")"}]}]], ",", 
+   "T"}], "]"}], "\[IndentingNewLine]", 
+ RowBox[{"%", "//", "Simplify"}], "\[IndentingNewLine]", 
+ RowBox[{"%", "//", "FortranForm"}], "\[IndentingNewLine]", 
+ RowBox[{"%", "//", "FullSimplify"}]}], "Input",
+ CellChangeTimes->{{3.677976784092896*^9, 3.677976892130496*^9}, {
+  3.6779769652428226`*^9, 3.677976969266464*^9}, {3.677977019755247*^9, 
+  3.67797702101821*^9}}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{"c1", " ", "c2", " ", 
+   SuperscriptBox["\[ExponentialE]", 
+    FractionBox["c2", 
+     RowBox[{"T", " ", "\[Lambda]"}]]]}], 
+  RowBox[{
+   SuperscriptBox[
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"-", "1"}], "+", 
+      SuperscriptBox["\[ExponentialE]", 
+       FractionBox["c2", 
+        RowBox[{"T", " ", "\[Lambda]"}]]]}], ")"}], "2"], " ", 
+   SuperscriptBox["T", "2"], " ", 
+   SuperscriptBox["\[Lambda]", "6"]}]]], "Output",
+ CellChangeTimes->{{3.677976871613864*^9, 3.6779768928604937`*^9}, 
+   3.6779769701160707`*^9, 3.6779770218694487`*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{"c1", " ", "c2", " ", 
+   SuperscriptBox["\[ExponentialE]", 
+    FractionBox["c2", 
+     RowBox[{"T", " ", "\[Lambda]"}]]]}], 
+  RowBox[{
+   SuperscriptBox[
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"-", "1"}], "+", 
+      SuperscriptBox["\[ExponentialE]", 
+       FractionBox["c2", 
+        RowBox[{"T", " ", "\[Lambda]"}]]]}], ")"}], "2"], " ", 
+   SuperscriptBox["T", "2"], " ", 
+   SuperscriptBox["\[Lambda]", "6"]}]]], "Output",
+ CellChangeTimes->{{3.677976871613864*^9, 3.6779768928604937`*^9}, 
+   3.6779769701160707`*^9, 3.677977021870974*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{"c1", " ", "c2", " ", 
+   SuperscriptBox[
+    RowBox[{"Csch", "[", 
+     FractionBox["c2", 
+      RowBox[{"2", " ", "T", " ", "\[Lambda]"}]], "]"}], "2"]}], 
+  RowBox[{"4", " ", 
+   SuperscriptBox["T", "2"], " ", 
+   SuperscriptBox["\[Lambda]", "6"]}]]], "Output",
+ CellChangeTimes->{{3.677976871613864*^9, 3.6779768928604937`*^9}, 
+   3.6779769701160707`*^9, 3.677977021965824*^9}],
+
+Cell["(c1*c2*E**(c2/(T*\[Lambda])))/((-1 + E**(c2/(T*\[Lambda])))**2*T**2*\
+\[Lambda]**6)", "Output",
+ CellChangeTimes->{{3.677976871613864*^9, 3.6779768928604937`*^9}, 
+   3.6779769701160707`*^9, 3.677977021967574*^9}]
 }, Open  ]]
 },
 WindowSize->{808, 911},
-WindowMargins->{{1104, Automatic}, {Automatic, 55}},
+WindowMargins->{{1128, Automatic}, {Automatic, 45}},
 FrontEndVersion->"10.4 for Linux x86 (64-bit) (April 11, 2016)",
 StyleDefinitions->"Default.nb"
 ]
@@ -91,7 +169,14 @@ Cell[964, 34, 142, 3, 47, "Output"]
 Cell[CellGroupData[{
 Cell[1143, 42, 426, 12, 55, "Input"],
 Cell[1572, 56, 302, 8, 49, "Output"],
-Cell[1877, 66, 115, 1, 65, "Output"]
+Cell[1877, 66, 115, 1, 32, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[2029, 72, 661, 17, 140, "Input"],
+Cell[2693, 91, 595, 17, 80, "Output"],
+Cell[3291, 110, 593, 17, 80, "Output"],
+Cell[3887, 129, 420, 11, 57, "Output"],
+Cell[4310, 142, 219, 3, 32, "Output"]
 }, Open  ]]
 }
 ]
