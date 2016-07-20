@@ -1,0 +1,99 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 10.4' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      2458,         91]
+NotebookOptionsPosition[      2008,         70]
+NotebookOutlinePosition[      2345,         85]
+CellTagsIndexPosition[      2302,         82]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[
+ RowBox[{"Integrate", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"Sin", "[", "x", "]"}], 
+    RowBox[{"Exp", "[", 
+     RowBox[{"-", " ", "x"}], "]"}]}], ",", 
+   RowBox[{"{", 
+    RowBox[{"x", ",", "0", ",", "\[Infinity]"}], "}"}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.677874601799327*^9, 3.6778746829907007`*^9}, 
+   3.6778761319327307`*^9, 3.677876173460128*^9}],
+
+Cell[BoxData[
+ FractionBox["1", "2"]], "Output",
+ CellChangeTimes->{{3.6778746346393337`*^9, 3.677874685005829*^9}, 
+   3.677876133072075*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{"Integrate", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"Sin", "[", "x", "]"}], 
+    RowBox[{"Exp", "[", 
+     RowBox[{"-", " ", "x"}], "]"}]}], ",", 
+   RowBox[{"{", 
+    RowBox[{"x", ",", "0", ",", "1"}], "}"}]}], 
+  "]"}], "\[IndentingNewLine]", 
+ RowBox[{"%", "*", "1."}]}], "Input",
+ CellChangeTimes->{{3.677876139619356*^9, 3.6778761396912317`*^9}, {
+  3.677876178043372*^9, 3.677876193275114*^9}}],
+
+Cell[BoxData[
+ RowBox[{"-", 
+  FractionBox[
+   RowBox[{
+    RowBox[{"-", "\[ExponentialE]"}], "+", 
+    RowBox[{"Cos", "[", "1", "]"}], "+", 
+    RowBox[{"Sin", "[", "1", "]"}]}], 
+   RowBox[{"2", " ", "\[ExponentialE]"}]]}]], "Output",
+ CellChangeTimes->{{3.677876178629054*^9, 3.677876194111265*^9}}],
+
+Cell[BoxData["0.24583700700023742`"], "Output",
+ CellChangeTimes->{{3.677876178629054*^9, 3.6778761941125917`*^9}}]
+}, Open  ]]
+},
+WindowSize->{808, 911},
+WindowMargins->{{1104, Automatic}, {Automatic, 55}},
+FrontEndVersion->"10.4 for Linux x86 (64-bit) (April 11, 2016)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 381, 10, 32, "Input"],
+Cell[964, 34, 142, 3, 47, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[1143, 42, 426, 12, 55, "Input"],
+Cell[1572, 56, 302, 8, 49, "Output"],
+Cell[1877, 66, 115, 1, 65, "Output"]
+}, Open  ]]
+}
+]
+*)
+
