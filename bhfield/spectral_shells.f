@@ -100,7 +100,7 @@ C      substitute into ordinary variables just for write()
 C (11) x=1.0D0 -> x='1.0D0'
 
 
-      PROGRAM test_main
+      PROGRAM spectral_shells
 
       IMPLICIT NONE
       REAL*8 UFTOL

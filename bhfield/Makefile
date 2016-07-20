@@ -5,18 +5,19 @@ LIBS = -lm libcuba.a
 OBJ = suzuki.o
 
 CUBALIBS = -L/home/vmwheeler/Software/local/lib -lcuba -lm
-CUBAINC = -I/home/vmwheeler/Software/local/include
+#CUBAINC = -I/home/vmwheeler/Software/local/include
 
 # Fortran compiler flags. 
 #FCFLAGS=
 #FCLIBS=
 
-DEFINES = -DNMAX_COEFFS=700 -DCHECK_SURFACE_MODE -DDATA_DIR="'/home/vmwheeler/Code/plasmo-split/bhfield/nkdata/'"
+DEFINES = -DNMAX_COEFFS=700 -DCHECK_SURFACE_MODE -DDATA_DIR="'/home/vmwheeler/Code/plasmo-split/bhfield/data/'"
 
 # DBOPT = -DCHECK_UNDERFLOW -DCHECK_TANGENTIAL_CONTINUITY -DDEBUG_BESSEL -DOUTPUT_YBESSE -fbounds-check -O -Wuninitialized -ffpe-trap=invalid,zero,overflow -fbacktrace -g
 DBOPT = -DCHECK_UNDERFLOW -DCHECK_TANGENTIAL_CONTINUITY -DDEBUG_BESSEL -fbounds-check
 
-MAIN = spectral_shells
+MAIN = full_spectrum
+#MAIN = spectral_shells
 
 # clear up the default gnu make
 .DEFAULT:
@@ -35,7 +36,7 @@ all: $(MAIN).exe
 
 %.exe: %.f $(OBJ)
 #	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(LIBS) -g -static -O2 -Wall -o $@ $^ libcuba.a
-	$(FC) -cpp $(DEFINES) $(CUBAINC) -g -static -O2 -Wall -o $@ $^ $(CUBALIBS)
+	$(FC) -cpp $(DEFINES) $(DBOPT) -g -static -O2 -Wall -o $@ $^ $(CUBALIBS)
 clean:
 	rm -f *o *exe
 
