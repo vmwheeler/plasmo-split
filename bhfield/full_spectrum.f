@@ -145,8 +145,6 @@ C
       CALL BHCOAT(X,Y,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
       QABS=QEXT-QSCA
       
-      CALL IntegrateTestSemiInf(ANS)
-      
       PRINT *, "Here it is: ", ANS
       
       IFILNAM="ASTMG173.csv"
@@ -157,20 +155,29 @@ C
       PRINT *, "And here is the intensity at ", WAVEL, "um"
       PRINT *, "  " , INTENSITY
       
-      TEMP = 1000.0D0
-      CALL BBINTENSITY(WAVEL,TEMP,IB)
-      PRINT *, "AND now the blackbody intensity there at T=1000"
+      TEMP = 2911.0D0
+      CALL BBEPOW(WAVEL,TEMP,IB)
+      PRINT *, "AND now the blackbody emmisive power there at T=1000"
       PRINT *, "  ", IB
       
-C      UPPER = 
-C     integrate over blackbody spectrum
-C      CALL INTEGRATEBB(WAVEL,TEMP,UPPER)
+      CALL BBEPOWDT(WAVEL,TEMP,IB)
+      PRINT *, "AND now the blackbody emmisive power DT there at T=1000"
+      PRINT *, "  ", IB
       
-      STOP
-      END
-
       
-      SUBROUTINE IntegrateTestSemiInf(ANS)
+      
+      CALL IntegrateBB(ANS,TEMP,1)
+      PRINT *,"integral over whole spectrum should give sigT^4"
+      PRINT *, "MINE: ", ANS
+      PRINT *, "Should be: ", 5.670E-8*TEMP**4.0D0
+      
+      stop
+      end
+      
+      
+      
+      
+      SUBROUTINE IntegrateBB(ANS,TEMP,choice)
 
       implicit none
 
@@ -187,7 +194,7 @@ C      CALL INTEGRATEBB(WAVEL,TEMP,UPPER)
       parameter (mineval = 0)
       parameter (maxeval = 50000)
 
-      integer nstart, nincrease, nbatch, gridno
+      integer nstart, nincrease, nbatch, gridno,choice
       integer*8 spin
       character*(*) statefile
       parameter (nstart = 1000)
@@ -220,9 +227,9 @@ C      CALL INTEGRATEBB(WAVEL,TEMP,UPPER)
       integer key
       parameter (key = 0)
       
-      REAL*8 ANS, userdata
+      REAL*8 ANS, userdata,TEMP
 
-      external sinexp
+      external bbfunc
 
       cubareal integral(ncomp), error(ncomp), prob(ncomp)
       integer verbose, neval, fail, nregions
@@ -231,29 +238,129 @@ C      CALL INTEGRATEBB(WAVEL,TEMP,UPPER)
       integer c
 
       
+      userdata = TEMP
+      
       call getenv("CUBAVERBOSE", env)
       verbose = 2
       read(env, *, iostat=fail, end=999, err=999) verbose
   999 continue
 
-      print *, "----- integrating full particle volume ------"
 
-      call Vegas(ndim, ncomp, sinexp, userdata, nvec, 
-     &   epsrel, epsabs, verbose, seed, 
-     &   mineval, maxeval, nstart, nincrease, nbatch, 
-     &   gridno, statefile, spin, 
-     &   neval, fail, integral, error, prob)
+      if (choice == 1) then
+        print *, "----- using Vegas -----"
+        call Vegas(ndim, ncomp, bbfunc, userdata, nvec, 
+     &    epsrel, epsabs, verbose, seed, 
+     &    mineval, maxeval, nstart, nincrease, nbatch, 
+     &    gridno, statefile, spin, 
+     &    neval, fail, integral, error, prob)
 
-      print *, "neval    =", neval
-      print *, "fail     =", fail
-      print '(F20.12," +- ",F20.12,"   p = ",F8.3)', 
-     &   (integral(c), error(c), prob(c), c = 1, ncomp)
+        print *, "neval    =", neval
+        print *, "fail     =", fail
+        print '(F20.12," +- ",F20.12,"   p = ",F8.3)', 
+     &     (integral(c), error(c), prob(c), c = 1, ncomp)
+      
+      else if (choice == 2) then
+        print *, "----- using Suave -----"
+        call suave(ndim, ncomp, bbfunc, userdata, nvec,
+     &    epsrel, epsabs, verbose + last, seed,
+     &    mineval, maxeval, nnew, nmin, flatness,
+     &    statefile, spin,
+     &    nregions, neval, fail, integral, error, prob)
+
+        print *, "nregions =", nregions
+        print *, "neval    =", neval
+        print *, "fail     =", fail
+        print '(F20.12," +- ",F20.12,"   p = ",F8.3)',
+     &    (integral(c), error(c), prob(c), c = 1, ncomp)
+      
+      else if (choice == 3) then
+        print *, "----- using Divonne -----"
+        call divonne(ndim, ncomp, bbfunc, userdata, nvec,
+     &    epsrel, epsabs, verbose, seed,
+     &    mineval, maxeval, key1, key2, key3, maxpass,
+     &    border, maxchisq, mindeviation,
+     &    ngiven, ldxgiven, 0, nextra, 0,
+     &    statefile, spin,
+     &    nregions, neval, fail, integral, error, prob)
+
+        print *, "nregions =", nregions
+        print *, "neval    =", neval
+        print *, "fail     =", fail
+        print '(F20.12," +- ",F20.12,"   p = ",F8.3)',
+     &    (integral(c), error(c), prob(c), c = 1, ncomp)
+      
+      else if (choice == 4) then
+        print *, "----- using Cuhre -----"
+        call cuhre(ndim, ncomp, bbfunc, userdata, nvec,
+     &    epsrel, epsabs, verbose + last,
+     &    mineval, maxeval, key,
+     &    statefile, spin,
+     &    nregions, neval, fail, integral, error, prob)
+
+        print *, "nregions =", nregions
+        print *, "neval    =", neval
+        print *, "fail     =", fail
+        print '(F20.12," +- ",F20.12,"   p = ",F8.3)',
+     &    (integral(c), error(c), prob(c), c = 1, ncomp)
+      
+      end if
+      
+      
       
       ANS = integral(1)
 
       RETURN
       END 
       
+
+C**************
+C blackbody function in format for cuba
+C ******************
+        integer function bbfunc(ndim, xx, ncomp, ff,userdata)
+        implicit none
+        integer ndim, ncomp
+        cubareal xx(*), ff(*),xi
+
+        real*8 lambda, t, lambda_m
+        real*8 eb
+        REAL*8 c1
+        REAL*8 c2
+        ! -- Local declarations --
+
+        real*8 beta,userdata
+        
+#define x xx(1)
+#define f ff(1)
+
+        !converstion from micron to meter and transformation to 0-1 interval
+        !lambda_m = x/(1.0D0-x) 
+        
+        t = userdata
+C        CALL BBEPOWM(lambda_m,t, eb)
+C        f = eb/(1.0D0-x)/(1.0D0-x)
+
+        c1 = 3.74177118e-16
+        c2 = 14387.75225e-06
+        
+        xi = x/(1.0D0-x) 
+        
+        !this gives sig T4
+        f = xi**3.0D0/(EXP(xi)-1.0D0)/(1.0D0-x)/(1.0D0-x)
+        f = f*c1/c2**4.0D0 * t**4.0D0
+
+        !test to see if math works (of course it does, agrees with mathematica)
+        !f = xi**3.0D0/(EXP(xi)-1.0D0)/(1.0D0-x)/(1.0D0-x)
+        !f = f*c1/c2**4.0D0 *4.0D0 * t**3.0D0
+
+C        f = SIN(x)*EXP(-x)
+C        xp = x/(1.0D0-x)
+C        f = SIN(xp)*EXP(-xp)/(1.0D0-x)/(1.0D0-x)
+
+        bbfunc = 0
+        end
+
+
+
 C************************************************************************
 
         integer function sinexp(ndim, xx, ncomp, ff)
@@ -350,7 +457,7 @@ C Function to calculate blackbody emissive power at a given temperature
 C  as a function of wavelength (in micron)
 C ***********************************************************************
       
-      SUBROUTINE BBINTENSITY(lambda, t, eb) 
+      SUBROUTINE BBEPOW(lambda, t, eb) 
 
       implicit none
 
@@ -363,9 +470,8 @@ C ***********************************************************************
 
       real*8 beta
       
-      lambda_m = lambda*1.0D-6
-      
-      PRINT *, "WAVEL in BB: ", lambda_m
+      lambda_m = lambda*1.0D-6 !converstion from micron to meter
+      !lambda_m = lambda!converstion from micron to meter
       
       c_first_radiation = 3.74177118e-16
       c_second_radiation = 14387.75225e-06
@@ -378,13 +484,39 @@ C ***********************************************************************
       end
       
       
+      SUBROUTINE BBEPOWM(lambda, t, eb) 
+
+      implicit none
+
+
+      real*8 lambda, t, lambda_m
+      real*8 eb
+      REAL*8 c_first_radiation
+      REAL*8 c_second_radiation
+      ! -- Local declarations --
+
+      real*8 beta
+      
+      !lambda_m = lambda*1.0D-6 !converstion from micron to meter
+      lambda_m = lambda*1.0D0!NO converstion from micron to meter
+      
+      c_first_radiation = 3.74177118e-16
+      c_second_radiation = 14387.75225e-06
+      beta  = c_second_radiation / (lambda_m * t)
+      eb = c_first_radiation  / (lambda_m ** 5 * (exp(beta) - 1.0D0))
+
+      
+
+      return
+      end
+      
 C ***********************************************************************
 C Function to calculate temperature derivative of the 
 C  blackbody emissive power at a given temperature
 C  as a function of wavelength (in micron)
 C ***********************************************************************
       
-      SUBROUTINE BBINTENSITYDT(lambda, t, ebdt) 
+      SUBROUTINE BBEPOWDT(lambda, t, ebdt) 
 
       implicit none
 
@@ -395,17 +527,37 @@ C ***********************************************************************
       REAL*8 c2
       ! -- Local declarations --
 
-      real*8 beta
-
-      lambda_m = lambda*1.0D-6
       
-      PRINT *, "WAVEL in BB: ", lambda_m
+      lambda_m = lambda*1.0D-6 !converstion from micron to meter
       
       c1 = 3.74177118e-16
       c2 = 14387.75225e-06
 
       ebdt = (c1*c2*EXP(c2/(t*lambda_m)))
-      ebdt = ebdt/((-1.0D0+EXP(c2/(t*lambda_m)))**2*T**2*lambda_m**6)
+      ebdt = ebdt/((-1.0D0+EXP(c2/(t*lambda_m)))**2*t**2*lambda_m**6)
+    
+      return
+      end
+      
+      SUBROUTINE BBEPOWDTM(lambda, t, ebdt) 
+
+      implicit none
+
+
+      real*8 lambda, t, lambda_m
+      real*8 ebdt
+      REAL*8 c1
+      REAL*8 c2
+      ! -- Local declarations --
+
+      
+      lambda_m = lambda*1.0D0 !NO converstion from micron to meter
+      
+      c1 = 3.74177118e-16
+      c2 = 14387.75225e-06
+
+      ebdt = (c1*c2*EXP(c2/(t*lambda_m)))
+      ebdt = ebdt/((-1.0D0+EXP(c2/(t*lambda_m)))**2*t**2*lambda_m**6)
     
       return
       end

@@ -254,3 +254,418 @@ C
       
       STOP
       END
+
+      
+
+C *******************************************************************
+C  The goal of this whole mess:
+C *********************************************************************
+      subroutine IntegrateShells(RADCOR,RADCOT,WAVEL,
+     &                   REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     &                   EPSVAC,OMEGA,MU,NSHELLS)
+     
+      implicit none
+     
+      REAL*8 RADCOR,RADCOT,WAVEL,EPSVAC,OMEGA,RSTEP
+      REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2,RAD,MU
+      integer NSHELLS,I
+      REAL*8 UABS(NSHELLS),RADS(NSHELLS)
+     
+      PRINT *, 'This is where the magic happens'
+      
+      RSTEP = RADCOT/DBLE(NSHELLS-1)
+      
+      DO 100 I=1,NSHELLS
+        RADS(I) = DBLE(I-1)*RSTEP       
+        CALL IntegrateUABSShell(RADCOR,RADCOT,WAVEL,
+     &                         REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     &                         EPSVAC,OMEGA,MU,UABS(I),RADS(I))
+        
+        
+  100 CONTINUE
+  
+  
+      OPEN(29,FILE='UabsVr.dat',STATUS='UNKNOWN')
+  701 FORMAT(3E13.5,E13.5)
+      PRINT *, "resulting field"
+      WRITE(29,*) WAVEL
+      WRITE(29,*) 'Absorption per volume per unit irradiance'
+      WRITE(29,*) '  units [=] (W m^-3) (W m^-2)^-1 '
+      WRITE(29,*) '-----------'
+      DO 29 I=1,NSHELLS
+        PRINT *, UABS(I)
+        WRITE(29,701) RADS(I)*1.0E-6, UABS(I)
+   29 CONTINUE   
+     
+
+  
+
+      
+      return
+      end
+      
+      
+C *******************************************************************
+C  This sets up and calls the cuba library to integrate over a shell
+C *********************************************************************
+  
+      SUBROUTINE IntegrateUABSShell(RADCOR,RADCOT,WAVEL,
+     &                         REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     &                         EPSVAC,OMEGA,MU,UABS_T,RAD)
+
+      implicit none
+
+      integer ndim, ncomp, nvec, last, seed, mineval, maxeval
+      cubareal epsrel, epsabs
+      
+      real*8 userdata(12),UABS_T
+      
+      parameter (ndim = 3)
+      parameter (ncomp = 1)
+      parameter (nvec = 1)
+      parameter (epsrel = 1D-4)
+      parameter (epsabs = 1D-12)
+      parameter (last = 4)
+      parameter (seed = 0)
+      parameter (mineval = 0)
+      parameter (maxeval = 100000)
+
+      integer nstart, nincrease, nbatch, gridno
+      integer*8 spin
+      character*(*) statefile
+      parameter (nstart = 1000)
+      parameter (nincrease = 500)
+      parameter (nbatch = 1000)
+      parameter (gridno = 0)
+      parameter (statefile = "")
+      parameter (spin = -1)
+
+      integer nnew, nmin
+      cubareal flatness
+      parameter (nnew = 1000)
+      parameter (nmin = 2)
+      parameter (flatness = 25D0)
+
+      integer key1, key2, key3, maxpass
+      cubareal border, maxchisq, mindeviation
+      integer ngiven, ldxgiven, nextra
+      parameter (key1 = 47)
+      parameter (key2 = 1)
+      parameter (key3 = 1)
+      parameter (maxpass = 5)
+      parameter (border = 0D0)
+      parameter (maxchisq = 10D0)
+      parameter (mindeviation = .25D0)
+      parameter (ngiven = 0)
+      parameter (ldxgiven = ndim)
+      parameter (nextra = 0)
+
+      integer key
+      parameter (key = 0)
+
+      REAL*8 RADCOR,RADCOT,WAVEL,EPSVAC,OMEGA,MU
+      REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2,RAD
+      
+      external diffShell
+
+      cubareal integral(ncomp), error(ncomp), prob(ncomp)
+      integer verbose, neval, fail, nregions
+      character*16 env
+
+      integer c
+
+      
+      userdata(1) = WAVEL
+      userdata(2) = REFMED
+      userdata(3) = REFRE1
+      userdata(4) = REFIM1
+      userdata(5) = REFRE2
+      userdata(6) = REFIM2
+      userdata(7) = RADCOR
+      userdata(8) = RADCOT
+      userdata(9) = EPSVAC
+      userdata(10) = OMEGA
+      userdata(11) = RAD
+      userdata(12) = MU
+   
+      
+ !     call getenv("CUBAVERBOSE", env)
+ !     verbose = 2
+ !     read(env, *, iostat=fail, end=999, err=999) verbose
+ ! 999 continue
+
+ !     print *, "-------------------- Vegas test --------------------"
+
+      print *, "Integrating shell with radius ", RAD
+ 
+      call Vegas(ndim, ncomp, diffShell, userdata, nvec, 
+     &   epsrel, epsabs, verbose, seed, 
+     &   mineval, maxeval, nstart, nincrease, nbatch, 
+     &   gridno, statefile, spin, 
+     &   neval, fail, integral, error, prob)
+
+      print *, "neval    =", neval
+      !print *, "fail     =", fail
+      print '(F20.12," +- ",F20.12,"   p = ",F8.3)', 
+     &   (integral(c), error(c), prob(c), c = 1, ncomp)
+      
+      UABS_T = integral(1)
+
+      RETURN
+      END       
+
+C *******************************************************************
+C  This provides the integrand for an integral over a spherical shell
+C *********************************************************************
+        integer function diffShell(ndim, xx, ncomp, ff, userdata)
+        implicit none
+        integer ndim, ncomp, IWHERE
+        cubareal xx(*), ff(*)
+        real*8 userdata(12), pi
+        REAL*8 RADCOR,RADCOT,WAVEL,XP(3),EPSVAC,OMEGA,RAD,MU,I0
+        REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2,EFSQ,UABS
+        COMPLEX*16 EC(3),HC(3)
+        parameter (pi = 3.14159265358979323846D0)
+#define x xx(1)
+#define y xx(2)
+#define z xx(3)
+#define f ff(1)
+        
+        WAVEL = userdata(1)
+        REFMED = userdata(2)
+        REFRE1 = userdata(3)
+        REFIM1 = userdata(4)
+        REFRE2 = userdata(5)
+        REFIM2 = userdata(6)
+        RADCOR = userdata(7)
+        RADCOT = userdata(8)
+        EPSVAC = userdata(9)
+        OMEGA = userdata(10)
+        RAD = userdata(11)
+        MU = userdata(12)
+        
+        !PRINT *, 'moopsy'
+        !print *, 'WAVEL: ', WAVEL
+        !print *, 'REFMED: ', REFMED
+        !print *, 'REFRE1: ', REFRE1
+        !print *, 'REFIM1: ', REFIM1
+        !print *, 'REFRE2: ', REFRE2
+        !print *, 'REFIM2: ', REFIM2
+        !print *, 'RADCOR: ', RADCOR
+        !print *, 'RADCOT: ', RADCOT
+        !print *, 'RAD: ', RAD
+                       
+        XP(1) = RAD
+        XP(2) = pi*y
+        XP(3) = 2.0D0*pi*z
+        
+        !print *, XP(1),XP(2),XP(3)
+        CALL FIELDVMW(WAVEL,REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     1                 RADCOR,RADCOT,XP,IWHERE,EC,HC)
+        I0 = 0.5*SQRT(EPSVAC/MU)*1.
+        EFSQ=ABS(EC(1))**2.0D0+ABS(EC(2))**2.0D0+ABS(EC(3))**2.0D0
+        IF(IWHERE.EQ.1) THEN
+C
+          UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ/I0
+C
+         ELSE IF(IWHERE.EQ.2) THEN
+C
+          UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ/I0
+C
+         ELSE
+C
+          UABS=0.0D0
+C
+         END IF
+
+        f = UABS*2.0D0*pi*pi*sin(pi*y)
+
+
+        diffShell = 0
+        end
+
+C *******************************************************************
+C  This sets up and calls the cuba library to integrate over the sphere
+C *********************************************************************
+  
+      SUBROUTINE IntegrateUABS(RADCOR,RADCOT,WAVEL,
+     &                         REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     &                         EPSVAC,OMEGA,MU,UABS_T)
+
+      implicit none
+
+      integer ndim, ncomp, nvec, last, seed, mineval, maxeval
+      cubareal epsrel, epsabs
+      
+      real*8 userdata(11),UABS_T
+      
+      parameter (ndim = 3)
+      parameter (ncomp = 1)
+      parameter (nvec = 1)
+      parameter (epsrel = 1D-4)
+      parameter (epsabs = 1D-12)
+      parameter (last = 4)
+      parameter (seed = 0)
+      parameter (mineval = 0)
+      parameter (maxeval = 50000)
+
+      integer nstart, nincrease, nbatch, gridno
+      integer*8 spin
+      character*(*) statefile
+      parameter (nstart = 1000)
+      parameter (nincrease = 500)
+      parameter (nbatch = 1000)
+      parameter (gridno = 0)
+      parameter (statefile = "")
+      parameter (spin = -1)
+
+      integer nnew, nmin
+      cubareal flatness
+      parameter (nnew = 1000)
+      parameter (nmin = 2)
+      parameter (flatness = 25D0)
+
+      integer key1, key2, key3, maxpass
+      cubareal border, maxchisq, mindeviation
+      integer ngiven, ldxgiven, nextra
+      parameter (key1 = 47)
+      parameter (key2 = 1)
+      parameter (key3 = 1)
+      parameter (maxpass = 5)
+      parameter (border = 0D0)
+      parameter (maxchisq = 10D0)
+      parameter (mindeviation = .25D0)
+      parameter (ngiven = 0)
+      parameter (ldxgiven = ndim)
+      parameter (nextra = 0)
+
+      integer key
+      parameter (key = 0)
+
+      REAL*8 RADCOR,RADCOT,WAVEL,EPSVAC,OMEGA,MU
+      REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2
+      
+      external diffUABS
+
+      cubareal integral(ncomp), error(ncomp), prob(ncomp)
+      integer verbose, neval, fail, nregions
+      character*16 env
+
+      integer c
+
+      
+      userdata(1) = WAVEL
+      userdata(2) = REFMED
+      userdata(3) = REFRE1
+      userdata(4) = REFIM1
+      userdata(5) = REFRE2
+      userdata(6) = REFIM2
+      userdata(7) = RADCOR
+      userdata(8) = RADCOT
+      userdata(9) = EPSVAC
+      userdata(10) = OMEGA
+      userdata(11) = MU
+      
+C      PRINT *, 'moopsy'
+C      print *, 'WAVEL: ', WAVEL
+C      print *, 'REFMED: ', REFMED
+C      print *, 'REFRE1: ', REFRE1
+C      print *, 'REFIM1: ', REFIM1
+C      print *, 'REFRE2: ', REFRE2
+C      print *, 'REFIM2: ', REFIM2
+C      print *, 'RADCOR: ', RADCOR
+C      print *, 'RADCOT: ', RADCOT
+      
+      
+      call getenv("CUBAVERBOSE", env)
+      verbose = 2
+      read(env, *, iostat=fail, end=999, err=999) verbose
+  999 continue
+
+      print *, "----- integrating full particle volume ------"
+
+      call Vegas(ndim, ncomp, diffUABS, userdata, nvec, 
+     &   epsrel, epsabs, verbose, seed, 
+     &   mineval, maxeval, nstart, nincrease, nbatch, 
+     &   gridno, statefile, spin, 
+     &   neval, fail, integral, error, prob)
+
+      print *, "neval    =", neval
+      print *, "fail     =", fail
+      print '(F20.12," +- ",F20.12,"   p = ",F8.3)', 
+     &   (integral(c), error(c), prob(c), c = 1, ncomp)
+      
+      UABS_T = integral(1)
+
+      RETURN
+      END 
+      
+C************************************************************************
+
+        integer function diffUABS(ndim, xx, ncomp, ff, userdata)
+        implicit none
+        integer ndim, ncomp, IWHERE
+        cubareal xx(*), ff(*)
+        real*8 userdata(11), pi
+        REAL*8 RADCOR,RADCOT,WAVEL,XP(3),EPSVAC,OMEGA,I0,MU
+        REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2,EFSQ,UABS
+        COMPLEX*16 EC(3),HC(3)
+        parameter (pi = 3.14159265358979323846D0)
+#define x xx(1)
+#define y xx(2)
+#define z xx(3)
+#define f ff(1)
+        
+        WAVEL = userdata(1)
+        REFMED = userdata(2)
+        REFRE1 = userdata(3)
+        REFIM1 = userdata(4)
+        REFRE2 = userdata(5)
+        REFIM2 = userdata(6)
+        RADCOR = userdata(7)
+        RADCOT = userdata(8)
+        EPSVAC = userdata(9)
+        OMEGA = userdata(10)
+        MU = userdata(11)
+        
+        !PRINT *, 'moopsy'
+        !print *, 'WAVEL: ', WAVEL
+        !print *, 'REFMED: ', REFMED
+        !print *, 'REFRE1: ', REFRE1
+        !print *, 'REFIM1: ', REFIM1
+        !print *, 'REFRE2: ', REFRE2
+        !print *, 'REFIM2: ', REFIM2
+        !print *, 'RADCOR: ', RADCOR
+        !print *, 'RADCOT: ', RADCOT
+        
+        XP(1) = RADCOT*x
+        XP(2) = pi*y
+        XP(3) = 2.0D0*pi*z
+        
+        !print *, XP(1),XP(2),XP(3)
+        CALL FIELDVMW(WAVEL,REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     1                 RADCOR,RADCOT,XP,IWHERE,EC,HC)
+        I0 = 0.5*SQRT(EPSVAC/MU)*1.
+        EFSQ=ABS(EC(1))**2.0D0+ABS(EC(2))**2.0D0+ABS(EC(3))**2.0D0
+        IF(IWHERE.EQ.1) THEN
+C
+          UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ/I0
+C
+         ELSE IF(IWHERE.EQ.2) THEN
+C
+          UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ/I0
+C
+         ELSE
+C
+          UABS=0.0D0
+C
+         END IF
+
+        f = UABS*RADCOT**3.0D0*2.0D0*pi*pi*x*x*sin(pi*y)
+
+
+        diffUABS = 0
+        end
+      
+      
+  
