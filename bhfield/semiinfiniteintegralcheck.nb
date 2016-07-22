@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[    131672,       2820]
-NotebookOptionsPosition[    130079,       2764]
-NotebookOutlinePosition[    130416,       2779]
-CellTagsIndexPosition[    130373,       2776]
+NotebookDataLength[    132444,       2844]
+NotebookOptionsPosition[    130734,       2784]
+NotebookOutlinePosition[    131071,       2799]
+CellTagsIndexPosition[    131028,       2796]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -2760,10 +2760,30 @@ ButtonData:>\\\"paclet:ref/message/NIntegrate/ncvb\\\", ButtonNote -> \
 
 Cell[BoxData["4.0717628524307795`*^6"], "Output",
  CellChangeTimes->{{3.678048486873698*^9, 3.678048502623761*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Integrate", "[", 
+  RowBox[{
+   RowBox[{"\[Theta]", " ", "\[Phi]", " ", "\[Lambda]"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"\[Theta]", ",", "0", ",", "\[Pi]"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"\[Phi]", ",", "0", ",", 
+     RowBox[{"2", "\[Pi]"}]}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"\[Lambda]", ",", "0.28", ",", "4."}], "}"}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.678134002687726*^9, 3.678134079120879*^9}, {
+  3.678135444108727*^9, 3.678135452764408*^9}}],
+
+Cell[BoxData["48.704545517001215`"], "Output",
+ CellChangeTimes->{{3.678134072691019*^9, 3.67813407992774*^9}}]
 }, Open  ]]
 },
 WindowSize->{808, 911},
-WindowMargins->{{1128, Automatic}, {Automatic, 45}},
+WindowMargins->{{1104, Automatic}, {Automatic, 45}},
 FrontEndVersion->"10.4 for Linux x86 (64-bit) (April 11, 2016)",
 StyleDefinitions->"Default.nb"
 ]
@@ -2820,7 +2840,11 @@ Cell[128380, 2723, 213, 3, 32, "Output"]
 Cell[CellGroupData[{
 Cell[128630, 2731, 298, 8, 32, "Input"],
 Cell[128931, 2741, 1014, 17, 87, "Message"],
-Cell[129948, 2760, 115, 1, 65, "Output"]
+Cell[129948, 2760, 115, 1, 32, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[130100, 2766, 504, 12, 32, "Input"],
+Cell[130607, 2780, 111, 1, 32, "Output"]
 }, Open  ]]
 }
 ]
