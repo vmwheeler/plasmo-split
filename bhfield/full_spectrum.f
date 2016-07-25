@@ -27,7 +27,7 @@
       
       integer npar
       real*8 params(1)
-      external diffIsolPabs, bbfunc
+      external diffIsolPabs, bbfunc, bbint
       
       
 #ifdef CHECK_UNDERFLOW
@@ -175,12 +175,13 @@ C
       PRINT *, "  ", IB
       
       
-      
-      CALL IntegrateBB(ANS,TEMP,4)
+      !call cubacores(0,1000)
+      !call initfun(diffIsolPabs,32768)
+      !CALL IntegrateBB(ANS,TEMP,1)
       PRINT *,"integral over whole spectrum should give sigT^4"
       PRINT *, "MINE: ", ANS
       PRINT *, "Should be: ", 5.670E-8*TEMP**4.0D0
-      
+      PRINT *, "check: ", ANS/(5.670E-8*TEMP**4.0D0)
       
       npar = 1
       params(1) = TEMP
@@ -188,13 +189,19 @@ C
       
       CALL IntegrateGeneric(ANS,diffIsolPabs,params,npar,1)
       PRINT *, ""
+      PRINT *, "Integrating over solar spec. should get ~1000W/m^2"
       PRINT *, "How did I do?"
       PRINT *, ANS
       
-      CALL IntegrateGeneric(ANS,bbfunc,params,npar,4)
+      !CALL IntegrateGeneric(ANS,bbfunc,params,npar,4)
       PRINT *, ""
       PRINT *, "This thingy should should give me the same result as "
       PRINT *, "IntegrateBB: ", ANS
+      
+      !params(1) = 5777.0D0
+      !CALL IntegrateGeneric(ANS,bbint,params,npar,1)
+      
+      !print *, "check: ", ANS/(5.670E-8*5777.0D0**4.0D0/pi)
       
       stop
       end
@@ -273,10 +280,9 @@ C   choice = 4 --> Cuhre
 
       integer c
      
-      print *, "this should be 1: ", npar
-      print *, "this should be TEMP: ", userdata(1)
-     
-     
+      !this is where I impose a serial eval... hopefully not too slow...
+      
+      
       call getenv("CUBAVERBOSE", env)
       verbose = 2
       read(env, *, iostat=fail, end=999, err=999) verbose
@@ -353,33 +359,77 @@ C ********************************************************************
 C This is the integrand I_sol*p_abs to be integrated over angle and wavelength
 C ********************************************************************
 
-        integer function diffIsolPabs(ndim, xx, ncomp, ff)
-        implicit none
-        integer ndim, ncomp
-        cubareal xx(*),ff(*),th,ph,lam
-        real*8 pi
-        
-#define x xx(1)
-#define y xx(2)
-#define z xx(3)
-#define f ff(1)
+      integer function diffIsolPabs(ndim,x,ncomp,f,userdata,nvec,core)
+      implicit none
+      real*8 pi, solint
+      real*8 WLFAC(3),REFMED,REFRE1,REFIM1,REFRE2,REFIM2
+      CHARACTER*80 DIRNAM,FILNAM(3),FNAME(3),IFNAME,IFILNAM
+      integer ndim, ncomp, I, core, nvec
+      double precision x(ndim), f(ncomp), th,ph,lam
+      real*8 userdata
+
+
+      DIRNAM=DATA_DIR
+      
+      pi=acos(-1.0D0)
+      
+      th = x(1)*pi
+      ph = x(2)*2.0D0*pi
+      
+      lam = 0.28D0 + (4.0D0-0.28D0)*x(3) !shift to integral over solar spectrum
+
       
       
+      ! note first chunk is necessary to change integration interval
+      ! second 10^-6 is a Jacobian since we changed the integral from meters to micron
+      ! f = (2.0D0*pi*pi* (4.0D0-0.28D0) ) * th*ph*lam*1.0D-6*1.0D-6
+      ! checks out with analytical one given by mathematica
+      
+C This is ugly.  May want to make it so the file is set only once
+C  in the entire program
+      
+C     The optical constants:
+C     reference (background)
+      FILNAM(1)='vac.nk'
+      WLFAC(1)=1.0D-4 !factor so all wavelengths in micron
+C     core
+      FILNAM(2)='Au_babar.nk'
+      WLFAC(2)=1.0D0
+C     shell
+      FILNAM(3)='CeO2_patsalas.nk'
+      WLFAC(3)=1.0D-3
+      DO 901 I=1,3
+       FNAME(I)=DIRNAM(1:MAX(INDEX(DIRNAM,' ')-1,1))//
+     1          FILNAM(I)(1:MAX(INDEX(FILNAM(I),' ')-1,1))
+  901 CONTINUE
+  
+      CALL OPTCON(0,lam,FNAME,WLFAC, 
+     1             REFMED,REFRE1,REFIM1,REFRE2,REFIM2)
 
-        pi=acos(-1.0D0)
-        
-        th = x*pi
-        ph = y*2.0D0*pi
-        
-        lam = 0.28D0 + (4.0D0-0.28D0)*z !shift to integral over solar spectrum
+      
+      IFILNAM="ASTMG173.csv"
+      IFNAME=DIRNAM(1:MAX(INDEX(DIRNAM,' ')-1,1))//
+     1          IFILNAM(1:MAX(INDEX(IFILNAM,' ')-1,1))
+      CALL SOLARINTENSITY(0,lam,IFNAME,solint,2)
 
-        
-        
-        ! note first chunk is necessary to change integration interval
-        f = (2.0D0*pi*pi* (4.0D0-0.28D0) ) * th*ph*lam
+  229 FORMAT('**pid ' I1, 
+     & '**  |wavelength:', E12.5, 'um',  
+     & '| |core n+ik:', E12.5, '+i',E12.5, 
+     & '| |shell n+ik:', E12.5, '+i',E12.5,
+     & '| |intensity:',E12.5,'|')
+      !WRITE(*,229) core,lam,REFRE1,REFIM1,REFRE2,REFIM2,solint
 
-        diffIsolPabs = 0
-        end
+      
+      !test... set wavelength, but have bhcoat called here to see
+      ! if the final result is fuckered.
+      
+      ! power of three since we are integrating over meter (10^-6) and
+      ! intensity is given in per nm (10^9)
+      f = (4.0D0-0.28D0 )* solint*1.0D3
+      !f = 1
+      
+      diffIsolPabs = 0
+      end
 
         
         
@@ -715,23 +765,19 @@ C   choice = 4 --> Cuhre
       
 
 C**************
-C blackbody function in format for cuba
+C blackbody emmisive power function in format for cuba
 C ******************
-        integer function bbfunc(ndim, xx, ncomp, ff,userdata)
+        integer function bbfunc(ndim, x, ncomp, f,userdata)
         implicit none
         integer ndim, ncomp
-        cubareal xx(*), ff(*),xi
-
-        real*8 lambda, t, lambda_m
-        real*8 eb
+        cubareal x(ndim), f(ncomp),xi
+        real*8 t
         REAL*8 c1
         REAL*8 c2
         ! -- Local declarations --
 
-        real*8 beta,userdata
+        real*8 userdata
         
-#define x xx(1)
-#define f ff(1)
 
         !converstion from micron to meter and transformation to 0-1 interval
         !lambda_m = x/(1.0D0-x) 
@@ -743,10 +789,10 @@ C        f = eb/(1.0D0-x)/(1.0D0-x)
         c1 = 3.74177118e-16
         c2 = 14387.75225e-06
         
-        xi = x/(1.0D0-x) 
+        xi = x(1)/(1.0D0-x(1)) 
         
         !this gives sig T4
-        f = xi**3.0D0/(EXP(xi)-1.0D0)/(1.0D0-x)/(1.0D0-x)
+        f = xi**3.0D0/(EXP(xi)-1.0D0)/(1.0D0-x(1))/(1.0D0-x(1))
         f = f*c1/c2**4.0D0 * t**4.0D0
 
         !test to see if math works (of course it does, agrees with mathematica)
@@ -761,20 +807,52 @@ C        f = SIN(xp)*EXP(-xp)/(1.0D0-x)/(1.0D0-x)
         end
 
 
+C**************
+C blackbody intensity function in format for cuba
+C ******************
+        integer function bbint(ndim, x, ncomp, f,userdata)
+        implicit none
+        integer ndim, ncomp
+        cubareal x(ndim), f(ncomp),xi
+
+        real*8 t,pi
+        REAL*8 c1
+        REAL*8 c2
+        ! -- Local declarations --
+
+        real*8 userdata
+        
+        !converstion from micron to meter and transformation to 0-1 interval
+        !lambda_m = x/(1.0D0-x) 
+        
+        pi=ACOS(-1.0D0)
+        
+        t = userdata
+
+        c1 = 3.74177118e-16
+        c2 = 14387.75225e-06
+        
+        xi = x(1)/(1.0D0-x(1)) 
+        
+        !this gives sig T4
+        f = xi**3.0D0/(EXP(xi)-1.0D0)/(1.0D0-x(1))/(1.0D0-x(1))
+        f = f*c1/c2**4.0D0 * t**4.0D0 / pi
+
+
+        bbint = 0
+        end
+        
 
 C************************************************************************
 
-        integer function sinexp(ndim, xx, ncomp, ff)
+        integer function sinexp(ndim, x, ncomp, f)
         implicit none
         integer ndim, ncomp
-        cubareal xx(*), ff(*),xp
+        cubareal x(ndim), f(ncomp),xp
         
-#define x xx(1)
-#define f ff(1)
-
 C        f = SIN(x)*EXP(-x)
-        xp = x/(1.0D0-x)
-        f = SIN(xp)*EXP(-xp)/(1.0D0-x)/(1.0D0-x)
+        xp = x(1)/(1.0D0-x(1))
+        f = SIN(xp)*EXP(-xp)/(1.0D0-x(1))/(1.0D0-x(1))
 
         sinexp = 0
         end
