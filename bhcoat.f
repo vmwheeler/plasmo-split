@@ -3,8 +3,9 @@
 
 ! Arguments:
 
-      REAL GSCA,QBACK,QQEXT,QQSCA,XX,YY
-      COMPLEX RRFRL1,RRFRL2
+      REAL, INTENT(OUT) :: GSCA,QBACK,QQEXT,QQSCA
+      REAL, INTENT(IN) :: XX,YY
+      COMPLEX, INTENT(IN) :: RRFRL1,RRFRL2
 
 ! Local variables:
 
