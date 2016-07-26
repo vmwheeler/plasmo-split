@@ -19,14 +19,12 @@
       
       COMPLEX*16 RFREL1,RFREL2
       
-      REAL*8 XPMIN(3),XPMAX(3)
-      REAL*8 XCMIN(3),XCMAX(3)
-      
       CHARACTER*80 DIRNAM,FILNAM(3),FNAME(3),IFNAME,IFILNAM
       CHARACTER*50 FNLOGF
       
-      integer npar
+      integer npar,nlams
       real*8 params(1)
+      real*8 userdata_f(2)
       external diffIsolPabs, bbfunc, bbint
       
       
@@ -136,10 +134,7 @@ C
 C VMW fixed to only use radial coord... used to use cartesian and check each
 C now uses worst case between radial and cart
       
-      EXTMAX=MAX(ABS(XPMIN(1)),ABS(XPMAX(1)),
-     1            ABS(XCMIN(1)),ABS(XCMIN(2)),ABS(XCMIN(3)),
-     1            ABS(XCMAX(1)),ABS(XCMAX(2)),ABS(XCMAX(3)))
-
+      EXTMAX=RADCOT
 
 C     RMAX=EXTMAX*SQRT(2.0D0)
       RMAX=EXTMAX*SQRT(3.0D0)
@@ -177,7 +172,7 @@ C
       
       !call cubacores(0,1000)
       !call initfun(diffIsolPabs,32768)
-      !CALL IntegrateBB(ANS,TEMP,1)
+      CALL IntegrateBB(ANS,TEMP,1)
       PRINT *,"integral over whole spectrum should give sigT^4"
       PRINT *, "MINE: ", ANS
       PRINT *, "Should be: ", 5.670E-8*TEMP**4.0D0
@@ -187,21 +182,75 @@ C
       params(1) = TEMP
       
       
-      CALL IntegrateGeneric(ANS,diffIsolPabs,params,npar,1)
-      PRINT *, ""
-      PRINT *, "Integrating over solar spec. should get ~1000W/m^2"
-      PRINT *, "How did I do?"
-      PRINT *, ANS
+      !CALL IntegrateGeneric(ANS,diffIsolPabs,params,npar,1)
+      !PRINT *, ""
+      !PRINT *, "Integrating over solar spec. should get ~1000W/m^2"
+      !PRINT *, "How did I do?"
+      !PRINT *, ANS
       
       !CALL IntegrateGeneric(ANS,bbfunc,params,npar,4)
-      PRINT *, ""
-      PRINT *, "This thingy should should give me the same result as "
-      PRINT *, "IntegrateBB: ", ANS
+      !PRINT *, ""
+      !PRINT *, "This thingy should should give me the same result as "
+      !PRINT *, "IntegrateBB: ", ANS
       
       !params(1) = 5777.0D0
       !CALL IntegrateGeneric(ANS,bbint,params,npar,1)
       
       !print *, "check: ", ANS/(5.670E-8*5777.0D0**4.0D0/pi)
+      
+      
+      
+      
+      ! Now I need to check if there are concurrency issues
+      ! calculate integral over Qabs*1 (unit intensity)
+      ! also output a file containing Qabs as a function of lambda
+      ! and make sure they agree.  Do this first
+       
+      OPEN(29,FILE='QabsVlam.dat',STATUS='UNKNOWN')
+  701 FORMAT(3E13.5,E13.5)
+      WRITE(29,*) 'Qabs per unit irradiance vs wavelength in um'
+      WRITE(29,*) '  units [=] (W m^-3) (W m^-2)^-1 '
+      WRITE(29,*) '-----------'    
+    
+       
+      nlams = 5000
+      DO 119 I=1,nlams
+        WAVEL = 0.28D0 + I*(4.0D0-0.28D0)/nlams
+        print *,"Wavel: ", WAVEL
+        CALL OPTCON(0,WAVEL,FNAME,WLFAC, 
+     1             REFMED,REFRE1,REFIM1,REFRE2,REFIM2)
+      
+      
+        RFREL1=DCMPLX(REFRE1,REFIM1)/REFMED
+        RFREL2=DCMPLX(REFRE2,REFIM2)/REFMED
+        
+        X=2.0D0*PI*RADCOR*REFMED/WAVEL
+        Y=2.0D0*PI*RADCOT*REFMED/WAVEL
+      
+        Y1=2.0D0*PI*RADCOR*ABS(DCMPLX(REFRE1,REFIM1))/WAVEL
+        Y2=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE1,REFIM1))/WAVEL
+        Y3=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE2,REFIM2))/WAVEL
+        
+        EXTMAX=RADCOT
+        RMAX=EXTMAX*SQRT(3.0D0)
+        Y4=2.0D0*PI*RMAX*REFMED/WAVEL
+        YMAX=MAX(Y1,Y2,Y3,Y4)
+        NSTOPF=INT(YMAX+4.05D0*YMAX**0.3333D0+2.0D0)
+
+        CALL BHCOAT(X,Y,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
+        QABS=QEXT-QSCA
+        WRITE(29,701) WAVEL, QABS
+        print *, "QABS = ", QABS
+  119 CONTINUE   
+      
+      userdata_f(1) = RADCOR
+      userdata_f(2) = RADCOT
+      CALL IntegrateGeneric(ANS,diffIsolPabs,userdata_f,npar,2)
+      print *, "please oh please: ", ANS
+      ! check and check!
+      
+      ! now lets get the integral over Uabs to agree
+      
       
       stop
       end
@@ -228,7 +277,7 @@ C   choice = 4 --> Cuhre
       parameter (ncomp = 1)
       parameter (nvec = 1)
       parameter (epsrel = 1D-5)
-      parameter (epsabs = 1D-12)
+      parameter (epsabs = 1D-8)
       parameter (last = 4)
       parameter (seed = 0)
       parameter (mineval = 0)
@@ -361,15 +410,28 @@ C ********************************************************************
 
       integer function diffIsolPabs(ndim,x,ncomp,f,userdata,nvec,core)
       implicit none
+      
       real*8 pi, solint
       real*8 WLFAC(3),REFMED,REFRE1,REFIM1,REFRE2,REFIM2
+      real*8 QEXT,QSCA,QABS,QBACK
+      real*8 RADCOT,RADCOR,RMAX,EXTMAX,Y,Y1,Y2,Y3,Y4,YMAX
+      
       CHARACTER*80 DIRNAM,FILNAM(3),FNAME(3),IFNAME,IFILNAM
-      integer ndim, ncomp, I, core, nvec
+      
+      integer ndim,ncomp,I,core,nvec,NSTOPF
+      
       double precision x(ndim), f(ncomp), th,ph,lam
-      real*8 userdata
+      real*8 userdata(2)
 
+      COMPLEX*16 RFREL1,RFREL2
 
       DIRNAM=DATA_DIR
+      
+      RADCOR = userdata(1)
+      RADCOT = userdata(2)
+      
+      !print *, RADCOR
+      !print *, RADCOT
       
       pi=acos(-1.0D0)
       
@@ -416,18 +478,37 @@ C     shell
      & '**  |wavelength:', E12.5, 'um',  
      & '| |core n+ik:', E12.5, '+i',E12.5, 
      & '| |shell n+ik:', E12.5, '+i',E12.5,
-     & '| |intensity:',E12.5,'|')
-      !WRITE(*,229) core,lam,REFRE1,REFIM1,REFRE2,REFIM2,solint
+     & '| |intensity:',E12.5,
+     & '| |Qabs:', E12.5,'|')
+      
 
       
-      !test... set wavelength, but have bhcoat called here to see
-      ! if the final result is fuckered.
       
       ! power of three since we are integrating over meter (10^-6) and
       ! intensity is given in per nm (10^9)
-      f = (4.0D0-0.28D0 )* solint*1.0D3
+      !f = (4.0D0-0.28D0 )* solint*1.0D3
       !f = 1
+      RFREL1=DCMPLX(REFRE1,REFIM1)/REFMED
+      RFREL2=DCMPLX(REFRE2,REFIM2)/REFMED
+        
+      X=2.0D0*PI*RADCOR*REFMED/lam
+      Y=2.0D0*PI*RADCOT*REFMED/lam
+  
+      Y1=2.0D0*PI*RADCOR*ABS(DCMPLX(REFRE1,REFIM1))/lam
+      Y2=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE1,REFIM1))/lam
+      Y3=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE2,REFIM2))/lam
+    
+      EXTMAX=RADCOT
+      RMAX=EXTMAX*SQRT(3.0D0)
+      Y4=2.0D0*PI*RMAX*REFMED/lam
+      YMAX=MAX(Y1,Y2,Y3,Y4)
+      NSTOPF=INT(YMAX+4.05D0*YMAX**0.3333D0+2.0D0)
+
+      CALL BHCOAT(X,Y,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
+      QABS=QEXT-QSCA
       
+      f = (4.0D0-0.28D0 )*QABS*1.0D-6
+      WRITE(*,229) core,lam,REFRE1,REFIM1,REFRE2,REFIM2,solint,QABS
       diffIsolPabs = 0
       end
 
