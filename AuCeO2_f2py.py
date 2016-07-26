@@ -3,6 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import bhcoat_pyed
 from scipy.interpolate import interp1d
+from scipy.integrate import simps
+
+#NOTE:  use >>f2py -c bhcoat.f -m bhcoat_pyed
+# to get the bhcoat_pyed module
 
 h = 6.626e-34
 c = 3.0e+8
@@ -37,12 +41,12 @@ tlams = np.linspace(280E-9,1000E-9,100)
 #plt.plot(tlams,nCeO2(tlams),tlams,kCeO2(tlams),tlams,nAu(tlams),tlams,kAu(tlams))
 #plt.show()
 
-rcore = 20E-9
+rcore = 30E-9
 rrefvac = 1.0
 
-lammin = 290.E-9
-lammax = 2000.E-9
-lams = np.linspace(lammin,lammax,1000)
+lammin = 280.E-9
+lammax = 4000.E-9
+lams = np.linspace(lammin,lammax,2000)
 
 rshells = np.linspace(rcore,rcore*5,5)
 rrefrefs = np.linspace(1.0,2.35,5)
@@ -59,13 +63,17 @@ for rshell in rshells:
     [qext, qsca, qback, gsca] = bhcoat_pyed.bhcoat(xcore, xshell, rrefcore, rrefshell)
     cabss.append((qext-qsca)*np.pi*rshell**2.)
     qabss.append(qext-qsca)
-    
+  
+  #calculate the integral of Qabs over the spectrum
+  qabsint = simps(qabss,lams)
+  print "integral over Qabs for rshell = " + str(rshell) + " = " + str(qabsint)  
   plt.plot(lams*1E9,qabss, label="t="+str(round((rshell-rcore)*1E9,1))+'nm')
+
+
 
 rshell = max(rshells)
 
 plt.plot(lams*1E9,solI(lams)/np.max(solI(lams)))
-
 
 cabss = []
 qabss = []
@@ -79,10 +87,14 @@ for lam in lams:
   qabss.append(qext-qsca)
 plt.plot(lams*1E9,qabss,'--', label='ceria only')
 
+
+
+
+
 #show emission spectrum
 temp = 800
 plt.plot(lams*1E9,planck(lams,temp)/np.max(planck(lams,temp)))
-print planck(lams,800)
+#print planck(lams,800)
 
 plt.xlabel('wavelength [nm]')
 plt.ylabel('Q_abs [1]')
