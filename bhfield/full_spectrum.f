@@ -53,7 +53,7 @@ C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       CC=2.99792458D8 ! light speed [m s-1]
       EPSVAC=1.0D7/(4.0D0*PI*CC*CC) ! eps0[F m-1]
       MU=4.0D0*PI*1.0D-7 ! assume non-magnetic (MU=MU0=const) [N A-2] 
-      OMEGA=2.0D0*PI*CC/(WAVEL*1.0D-6) ! angular frequency [s-1]
+      !OMEGA=2.0D0*PI*CC/(WAVEL*1.0D-6) ! angular frequency [s-1]
       
       
 C     log file
@@ -246,7 +246,7 @@ C
       userdata_f(1) = RADCOR
       userdata_f(2) = RADCOT
       userdata_f(3) = EPSVAC
-      userdata_f(4) = OMEGA
+      userdata_f(4) = CC
       userdata_f(5) = MU
       npar_f = 5
       CALL IntegrateGeneric(ANS,diffIsolPabs,userdata_f,npar_f,4,1)
@@ -283,7 +283,7 @@ C   choice = 4 --> Cuhre
       parameter (last = 4)
       parameter (seed = 0)
       parameter (mineval = 0)
-      parameter (maxeval = 1000)
+      parameter (maxeval = 100000)
 
       integer nstart, nincrease, nbatch, gridno,choice
       integer*8 spin
@@ -415,7 +415,7 @@ C ********************************************************************
       
       real*8 pi, solint
       real*8 WLFAC(3),REFMED,REFRE1,REFIM1,REFRE2,REFIM2
-      real*8 QEXT,QSCA,QABS,QBACK,XP(3),UABS,MU,OMEGA
+      real*8 QEXT,QSCA,QABS,QBACK,XP(3),UABS,MU,OMEGA,CC
       real*8 EFSQ,I0,EPSVAC,lammin,dlam
       real*8 RADCOT,RADCOR,RMAX,EXTMAX,Xpara,Ypara,Y1,Y2,Y3,Y4,YMAX
       
@@ -433,7 +433,7 @@ C ********************************************************************
       RADCOR = userdata(1)
       RADCOT = userdata(2)
       EPSVAC = userdata(3)
-      OMEGA = userdata(4)
+      CC = userdata(4)
       MU = userdata(5)
       
 C      print *, ''
@@ -522,6 +522,7 @@ C     shell
      1                 RADCOR,RADCOT,XP,IWHERE,EC,HC)
       I0 = 0.5*SQRT(EPSVAC/MU)*1.
       EFSQ=ABS(EC(1))**2.0D0+ABS(EC(2))**2.0D0+ABS(EC(3))**2.0D0
+      OMEGA=2.0D0*PI*CC/(lam*1.0D-6) ! angular frequency [s-1]
       IF(IWHERE.EQ.1) THEN
         UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ/I0
       ELSE IF(IWHERE.EQ.2) THEN
@@ -537,9 +538,9 @@ C     & '| |shell n+ik:', E12.5, '+i',E12.5,
 C     & '| |intensity:',E12.5,
 C     & '| |Qabs:', E12.5,'|')
 C      WRITE(*,229) core,lam,REFRE1,REFIM1,REFRE2,REFIM2,solint,QABS
-  333 FORMAT('Uabs=',E12.5,', r=',E12.5,'um', ', th=',E12.5,
-     & ', ph=',E12.5,', lam=',E12.5)  
-      WRITE(*,333), UABS,XP(1),XP(2),XP(3),lam
+C  333 FORMAT('Uabs=',E12.5,', r=',E12.5,'um', ', th=',E12.5,
+C     & ', ph=',E12.5,', lam=',E12.5)  
+C      WRITE(*,333) UABS,XP(1),XP(2),XP(3),lam
       
       
 C*****test cases**
@@ -554,7 +555,8 @@ C     &         /(PI*RADCOT*RADCOT)
 C*****now combine the two... 
       f(1) = dlam*RADCOT**3.0D0*2.0D0*pi*pi
      &         *UABS*x(1)*x(1)*sin(pi*x(2))*1.0D-6
-     &         /(PI*RADCOT*RADCOT)!*1.0D-6
+     &         /(PI*RADCOT*RADCOT)*1.0D-6
+C*****awwwwww yeeeeeeah
 
       diffIsolPabs = 0
       end
