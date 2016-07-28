@@ -7,13 +7,13 @@
       REAL*8 UFTOL
       PARAMETER (UFTOL=1.0D-6)
       
-      INTEGER I,NSTOPF,NSHELLS
+      INTEGER I,NSTOPF!,NSHELLS
       
       REAL*8 WLFAC(3)
       
       REAL*8 RADCOR,RADCOT,WAVEL,PI,CC,EPSVAC,MU,OMEGA
       REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2
-      REAL*8 X,Y,Y1,Y2,Y3,Y4,YMAX,EXTMAX,RMAX
+      REAL*8 Xpara,Ypara,Y1,Y2,Y3,Y4,YMAX,EXTMAX,RMAX
       REAL*8 QEXT,QSCA,QBACK,QABS,ANS
       REAL*8 INTENSITY,TEMP,IB
       
@@ -22,9 +22,9 @@
       CHARACTER*80 DIRNAM,FILNAM(3),FNAME(3),IFNAME,IFILNAM
       CHARACTER*50 FNLOGF
       
-      integer npar,nlams
+      integer npar,nlams,npar_f
       real*8 params(1)
-      real*8 userdata_f(2)
+      real*8 userdata_f(5)
       external diffIsolPabs, bbfunc, bbint
       
       
@@ -46,7 +46,7 @@
 C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 C     Declare all relevant physical constants
 C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      WAVEL = 0.28D0
+      WAVEL = 0.507D0
       RADCOR = 0.03D0
       RADCOT = 0.06D0
       PI=ACOS(-1.0D0)
@@ -119,8 +119,8 @@ C      PRINT *, "got: ",REFRE2," + i*",REFIM2," for ",WAVEL," micron"
  
  
 C     define the particle size parameters for core and shell
-      X=2.0D0*PI*RADCOR*REFMED/WAVEL
-      Y=2.0D0*PI*RADCOT*REFMED/WAVEL
+      Xpara=2.0D0*PI*RADCOR*REFMED/WAVEL
+      Ypara=2.0D0*PI*RADCOT*REFMED/WAVEL
       
       
  
@@ -145,12 +145,12 @@ C      NSTOPF = NSTOPF -4
 C
    14 FORMAT ("CORE SIZE PARAM = ",F8.3,", COAT SIZE",
      1" PARAM = ",F8.3,", NSTOP(estim) = ",I3)
-      WRITE(51,14) X,Y,NSTOPF
+      WRITE(51,14) Xpara,Ypara,NSTOPF
       
 C
 C calculate coefficients
 C
-      CALL BHCOAT(X,Y,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
+      CALL BHCOAT(Xpara,Ypara,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
       QABS=QEXT-QSCA
       
       PRINT *, "Here it is: ", ANS
@@ -213,10 +213,10 @@ C
       WRITE(29,*) '-----------'    
     
        
-      nlams = 5000
+      nlams = 500
       DO 119 I=1,nlams
         WAVEL = 0.28D0 + I*(4.0D0-0.28D0)/nlams
-        print *,"Wavel: ", WAVEL
+        !print *,"Wavel: ", WAVEL
         CALL OPTCON(0,WAVEL,FNAME,WLFAC, 
      1             REFMED,REFRE1,REFIM1,REFRE2,REFIM2)
       
@@ -224,8 +224,8 @@ C
         RFREL1=DCMPLX(REFRE1,REFIM1)/REFMED
         RFREL2=DCMPLX(REFRE2,REFIM2)/REFMED
         
-        X=2.0D0*PI*RADCOR*REFMED/WAVEL
-        Y=2.0D0*PI*RADCOT*REFMED/WAVEL
+        Xpara=2.0D0*PI*RADCOR*REFMED/WAVEL
+        Ypara=2.0D0*PI*RADCOT*REFMED/WAVEL
       
         Y1=2.0D0*PI*RADCOR*ABS(DCMPLX(REFRE1,REFIM1))/WAVEL
         Y2=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE1,REFIM1))/WAVEL
@@ -237,20 +237,22 @@ C
         YMAX=MAX(Y1,Y2,Y3,Y4)
         NSTOPF=INT(YMAX+4.05D0*YMAX**0.3333D0+2.0D0)
 
-        CALL BHCOAT(X,Y,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
+        CALL BHCOAT(Xpara,Ypara,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
         QABS=QEXT-QSCA
         WRITE(29,701) WAVEL, QABS
-        print *, "QABS = ", QABS
+        !print *, "QABS = ", QABS
   119 CONTINUE   
       
       userdata_f(1) = RADCOR
       userdata_f(2) = RADCOT
-      CALL IntegrateGeneric(ANS,diffIsolPabs,userdata_f,npar,2)
+      userdata_f(3) = EPSVAC
+      userdata_f(4) = OMEGA
+      userdata_f(5) = MU
+      npar_f = 5
+      CALL IntegrateGeneric(ANS,diffIsolPabs,userdata_f,npar_f,4,1)
+      
       print *, "please oh please: ", ANS
-      ! check and check!
-      
-      ! now lets get the integral over Uabs to agree
-      
+       
       
       stop
       end
@@ -266,22 +268,22 @@ C   choice = 2 --> Suave
 C   choice = 3 --> Divonne  
 C   choice = 4 --> Cuhre
   
-      SUBROUTINE IntegrateGeneric(ANS,extfunc,userdata,npar,choice)
+      SUBROUTINE IntegrateGeneric(ANS,extfunc,userdata,npar,ndim,choice)
 
       implicit none
 
       integer ndim, ncomp, nvec, last, seed, mineval, maxeval
       cubareal epsrel, epsabs
       
-      parameter (ndim = 3)
+      !parameter (ndim = 4)
       parameter (ncomp = 1)
       parameter (nvec = 1)
-      parameter (epsrel = 1D-5)
-      parameter (epsabs = 1D-8)
+      parameter (epsrel = 1D-6)
+      parameter (epsabs = 1D-20)
       parameter (last = 4)
       parameter (seed = 0)
       parameter (mineval = 0)
-      parameter (maxeval = 100000)
+      parameter (maxeval = 1000)
 
       integer nstart, nincrease, nbatch, gridno,choice
       integer*8 spin
@@ -310,7 +312,7 @@ C   choice = 4 --> Cuhre
       parameter (maxchisq = 10D0)
       parameter (mindeviation = .25D0)
       parameter (ngiven = 0)
-      parameter (ldxgiven = ndim)
+      !parameter (ldxgiven = ndim)
       parameter (nextra = 0)
 
       integer key
@@ -329,8 +331,8 @@ C   choice = 4 --> Cuhre
 
       integer c
      
-      !this is where I impose a serial eval... hopefully not too slow...
-      
+      ldxgiven = ndim
+     
       
       call getenv("CUBAVERBOSE", env)
       verbose = 2
@@ -413,35 +415,45 @@ C ********************************************************************
       
       real*8 pi, solint
       real*8 WLFAC(3),REFMED,REFRE1,REFIM1,REFRE2,REFIM2
-      real*8 QEXT,QSCA,QABS,QBACK
-      real*8 RADCOT,RADCOR,RMAX,EXTMAX,Y,Y1,Y2,Y3,Y4,YMAX
+      real*8 QEXT,QSCA,QABS,QBACK,XP(3),UABS,MU,OMEGA
+      real*8 EFSQ,I0,EPSVAC,lammin,dlam
+      real*8 RADCOT,RADCOR,RMAX,EXTMAX,Xpara,Ypara,Y1,Y2,Y3,Y4,YMAX
       
       CHARACTER*80 DIRNAM,FILNAM(3),FNAME(3),IFNAME,IFILNAM
       
-      integer ndim,ncomp,I,core,nvec,NSTOPF
+      integer ndim,ncomp,I,core,nvec,NSTOPF,IWHERE
       
-      double precision x(ndim), f(ncomp), th,ph,lam
-      real*8 userdata(2)
+      double precision x(ndim), f(ncomp),lam
+      real*8 userdata(5)
 
-      COMPLEX*16 RFREL1,RFREL2
+      COMPLEX*16 RFREL1,RFREL2,EC(3),HC(3)
 
       DIRNAM=DATA_DIR
       
       RADCOR = userdata(1)
       RADCOT = userdata(2)
+      EPSVAC = userdata(3)
+      OMEGA = userdata(4)
+      MU = userdata(5)
       
-      !print *, RADCOR
-      !print *, RADCOT
+C      print *, ''
+C      print *, RADCOR
+C      print *, RADCOT
+C      print *, EPSVAC
+C      print *, OMEGA
+C      print *, MU
+C      print *, ''
       
       pi=acos(-1.0D0)
-      
-      th = x(1)*pi
-      ph = x(2)*2.0D0*pi
-      
-      lam = 0.28D0 + (4.0D0-0.28D0)*x(3) !shift to integral over solar spectrum
 
+      lammin = 0.28D0
+      dlam = 4.0D0-0.28D0
+      lam = lammin + dlam*x(4) !shift to integral over solar spectrum
       
-      
+      ! **** for test case!!!
+      !lam = 0.507D0
+      ! *****
+            
       ! note first chunk is necessary to change integration interval
       ! second 10^-6 is a Jacobian since we changed the integral from meters to micron
       ! f = (2.0D0*pi*pi* (4.0D0-0.28D0) ) * th*ph*lam*1.0D-6*1.0D-6
@@ -474,25 +486,19 @@ C     shell
      1          IFILNAM(1:MAX(INDEX(IFILNAM,' ')-1,1))
       CALL SOLARINTENSITY(0,lam,IFNAME,solint,2)
 
-  229 FORMAT('**pid ' I1, 
-     & '**  |wavelength:', E12.5, 'um',  
-     & '| |core n+ik:', E12.5, '+i',E12.5, 
-     & '| |shell n+ik:', E12.5, '+i',E12.5,
-     & '| |intensity:',E12.5,
-     & '| |Qabs:', E12.5,'|')
-      
-
-      
       
       ! power of three since we are integrating over meter (10^-6) and
       ! intensity is given in per nm (10^9)
+      ! uncomment this f to get 1000 W/m/m(as you should)
       !f = (4.0D0-0.28D0 )* solint*1.0D3
       !f = 1
       RFREL1=DCMPLX(REFRE1,REFIM1)/REFMED
       RFREL2=DCMPLX(REFRE2,REFIM2)/REFMED
         
-      X=2.0D0*PI*RADCOR*REFMED/lam
-      Y=2.0D0*PI*RADCOT*REFMED/lam
+        
+      Xpara=2.0D0*PI*RADCOR*REFMED/lam
+      Ypara=2.0D0*PI*RADCOT*REFMED/lam
+       
   
       Y1=2.0D0*PI*RADCOR*ABS(DCMPLX(REFRE1,REFIM1))/lam
       Y2=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE1,REFIM1))/lam
@@ -504,11 +510,52 @@ C     shell
       YMAX=MAX(Y1,Y2,Y3,Y4)
       NSTOPF=INT(YMAX+4.05D0*YMAX**0.3333D0+2.0D0)
 
-      CALL BHCOAT(X,Y,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
+
+      CALL BHCOAT(Xpara,Ypara,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
       QABS=QEXT-QSCA
       
-      f = (4.0D0-0.28D0 )*QABS*1.0D-6
-      WRITE(*,229) core,lam,REFRE1,REFIM1,REFRE2,REFIM2,solint,QABS
+      XP(1) = RADCOT*x(1) !r
+      XP(2) = pi*x(2) !theta
+      XP(3) = 2.0D0*pi*x(3) !phi
+     
+      CALL FIELDVMW(lam,REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     1                 RADCOR,RADCOT,XP,IWHERE,EC,HC)
+      I0 = 0.5*SQRT(EPSVAC/MU)*1.
+      EFSQ=ABS(EC(1))**2.0D0+ABS(EC(2))**2.0D0+ABS(EC(3))**2.0D0
+      IF(IWHERE.EQ.1) THEN
+        UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ/I0
+      ELSE IF(IWHERE.EQ.2) THEN
+        UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ/I0
+      ELSE
+        UABS=0.0D0
+      END IF
+
+C  229 FORMAT('**pid ' I1, 
+C     & '**  |wavelength:', E12.5, 'um',  
+C     & '| |core n+ik:', E12.5, '+i',E12.5, 
+C     & '| |shell n+ik:', E12.5, '+i',E12.5,
+C     & '| |intensity:',E12.5,
+C     & '| |Qabs:', E12.5,'|')
+C      WRITE(*,229) core,lam,REFRE1,REFIM1,REFRE2,REFIM2,solint,QABS
+  333 FORMAT('Uabs=',E12.5,', r=',E12.5,'um', ', th=',E12.5,
+     & ', ph=',E12.5,', lam=',E12.5)  
+      WRITE(*,333), UABS,XP(1),XP(2),XP(3),lam
+      
+      
+C*****test cases**
+C*****uncomment this f to get the spectral integral of Qabs (verified)
+C      f(1) = (4.0D0-0.28D0 )*QABS*1.0D-6
+
+C*****uncomment this f and set lambda above to get Qabs using Uabs at a certain wavelength
+C      f(1) = RADCOT**3.0D0*2.0D0*pi*pi
+C     &         *UABS*x(1)*x(1)*sin(pi*x(2))*1.0D-6
+C     &         /(PI*RADCOT*RADCOT)
+      
+C*****now combine the two... 
+      f(1) = dlam*RADCOT**3.0D0*2.0D0*pi*pi
+     &         *UABS*x(1)*x(1)*sin(pi*x(2))*1.0D-6
+     &         /(PI*RADCOT*RADCOT)!*1.0D-6
+
       diffIsolPabs = 0
       end
 

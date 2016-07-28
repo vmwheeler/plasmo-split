@@ -23,7 +23,6 @@ MAIN = full_spectrum
 .DEFAULT:
 .SUFFIXES:
 .SUFFIXES: .f .o .exe
-# .PRECIOUS: %.o %-arp.o %-arp-bd.o
 .PHONY: all clean allclean
 
 %.exe: %.o
@@ -36,8 +35,8 @@ all: $(MAIN).exe
 
 %.exe: %.f $(OBJ)
 #	$(FC) -cpp $(DEFINES) $(LIBLOCS) $(LIBS) -g -static -O2 -Wall -o $@ $^ libcuba.a
-#	$(FC) -cpp $(DEFINES) $(DBOPT) -g -O2 -Wall -static -o $@ $^ $(CUBALIBS)
-	$(FC) -cpp $(DEFINES) $(DBOPT) -g -O2 -Wall -o $@ $^ $(CUBALIBS)
+	$(FC) -cpp $(DEFINES) $(DBOPT) -g -O2 -Wall -static -o $@ $^ $(CUBALIBS)
+#	$(FC) -cpp $(DEFINES) $(DBOPT) -g -O2 -Wall -o $@ $^ $(CUBALIBS)
 clean:
 	rm -f *o *exe
 
