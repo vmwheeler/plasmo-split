@@ -14,7 +14,7 @@ Qabss = data[:,1]
 
 print lams
 
-integval = simps(Qabss,lams*1.0E-6)
+integval = simps(Qabss,lams)
 print "oh please: " + str(integval)
 
 plt.figure()

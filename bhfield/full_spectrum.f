@@ -7,25 +7,24 @@
       REAL*8 UFTOL
       PARAMETER (UFTOL=1.0D-6)
       
-      INTEGER I,NSTOPF!,NSHELLS
+      INTEGER I,NSTOPF,nshells
       
       REAL*8 WLFAC(3)
       
-      REAL*8 RADCOR,RADCOT,WAVEL,PI,CC,EPSVAC,MU,OMEGA
+      REAL*8 RADCOR,RADCOT,WAVEL,PI,CC,EPSVAC,MU
       REAL*8 REFMED,REFRE1,REFIM1,REFRE2,REFIM2
       REAL*8 Xpara,Ypara,Y1,Y2,Y3,Y4,YMAX,EXTMAX,RMAX
       REAL*8 QEXT,QSCA,QBACK,QABS,ANS
-      REAL*8 INTENSITY,TEMP,IB
+      REAL*8 INTENSITY,TEMP,IB!,rad
       
       COMPLEX*16 RFREL1,RFREL2
       
       CHARACTER*80 DIRNAM,FILNAM(3),FNAME(3),IFNAME,IFILNAM
       CHARACTER*50 FNLOGF
       
-      integer npar,nlams,npar_f
-      real*8 params(1)
-      real*8 userdata_f(5)
-      external diffIsolPabs, bbfunc, bbint
+      integer nlams,npar_s,npar_f,npar
+      real*8 userdata_s(6),userdata_f(5),params(1)
+      external diffIsolPabs, diffShellIsolPabs, bbfunc, bbint
       
       
 #ifdef CHECK_UNDERFLOW
@@ -172,14 +171,14 @@ C
       
       !call cubacores(0,1000)
       !call initfun(diffIsolPabs,32768)
-      CALL IntegrateBB(ANS,TEMP,1)
-      PRINT *,"integral over whole spectrum should give sigT^4"
-      PRINT *, "MINE: ", ANS
-      PRINT *, "Should be: ", 5.670E-8*TEMP**4.0D0
-      PRINT *, "check: ", ANS/(5.670E-8*TEMP**4.0D0)
+C      CALL IntegrateBB(ANS,TEMP,1)
+C      PRINT *,"integral over whole spectrum should give sigT^4"
+C      PRINT *, "MINE: ", ANS
+C      PRINT *, "Should be: ", 5.670E-8*TEMP**4.0D0
+C      PRINT *, "check: ", ANS/(5.670E-8*TEMP**4.0D0)
       
-      npar = 1
-      params(1) = TEMP
+C      npar = 1
+C      params(1) = TEMP
       
       
       !CALL IntegrateGeneric(ANS,diffIsolPabs,params,npar,1)
@@ -213,7 +212,7 @@ C
       WRITE(29,*) '-----------'    
     
        
-      nlams = 500
+      nlams = 1000
       DO 119 I=1,nlams
         WAVEL = 0.28D0 + I*(4.0D0-0.28D0)/nlams
         !print *,"Wavel: ", WAVEL
@@ -253,11 +252,68 @@ C
       
       print *, "please oh please: ", ANS
        
+       
+C      rad = 0.025
+      userdata_s(1) = RADCOR
+      userdata_s(2) = RADCOT
+      userdata_s(3) = EPSVAC
+      userdata_s(4) = CC
+      userdata_s(5) = MU
+C      userdata_s(6) = rad
+      npar_s = 6
+      print *, "starting the business"
+      nshells = 50
+      CALL IntegrateShellsFull(userdata_s,npar_s,nshells)
+
+   
       
       stop
       end
       
+      
+C **********************************************************************
+C Should be final subroutine that produces files for MATLAB
+C **********************************************************************
+      
+      SUBROUTINE IntegrateShellsFull(userdata,npar,nshells)
+      
+      implicit none
+      
+      integer nshells,npar,i
+      real*8 userdata(npar),rads(nshells),uabs(nshells)
+      real*8 radcot,rstep
+      external diffShellIsolPabs
+      
+      radcot = userdata(2)
+      rstep = radcot/dble(nshells-1)
+      
+      
+      do 291 i=1,nshells
+        rads(i) = dble(i-1)*rstep
+        userdata(6) = rads(i)
+        call IntegrateGeneric(uabs(i),diffShellIsolPabs,
+     &              userdata,npar,3,1)
+        print *, '********',rads(i), uabs(i)
+        
+  291 continue
+      
+      
+      OPEN(44,FILE='UabsVr_full.dat',STATUS='UNKNOWN')
+  701 FORMAT(3E13.5,E13.5)
+      PRINT *, "resulting field"
+      WRITE(44,*) 'Absorption per volume per unit irradiance'
+      WRITE(44,*) '  units [=] (W m^-3) (W m^-2)^-1 '
+      WRITE(44,*) '-----------'
+      
 
+      
+      do 119 i=1,nshells
+        WRITE(44,701) rads(i)*1.0E-6, uabs(i)
+  119 continue   
+      
+  
+      return
+      end
   
   
 C ********************************************************************
@@ -283,7 +339,7 @@ C   choice = 4 --> Cuhre
       parameter (last = 4)
       parameter (seed = 0)
       parameter (mineval = 0)
-      parameter (maxeval = 100000)
+      parameter (maxeval = 20000)
 
       integer nstart, nincrease, nbatch, gridno,choice
       integer*8 spin
@@ -407,7 +463,125 @@ C   choice = 4 --> Cuhre
       END 
         
 C ********************************************************************
-C This is the integrand I_sol*p_abs to be integrated over angle and wavelength
+C This is the integrand I_sol*p_abs to be integrated over angle and 
+C wavelength only at a given radius
+C ********************************************************************
+
+      integer function diffShellIsolPabs(ndim,x,
+     &                        ncomp,f,userdata,nvec,core)
+      implicit none
+      
+      real*8 pi, solint
+      real*8 WLFAC(3),REFMED,REFRE1,REFIM1,REFRE2,REFIM2
+      real*8 QEXT,QSCA,QABS,QBACK,XP(3),UABS,MU,OMEGA,CC
+      real*8 EFSQ,I0,EPSVAC,lammin,dlam,rad
+      real*8 RADCOT,RADCOR,RMAX,EXTMAX,Xpara,Ypara,Y1,Y2,Y3,Y4,YMAX
+      
+      CHARACTER*80 DIRNAM,FILNAM(3),FNAME(3),IFNAME,IFILNAM
+      
+      integer ndim,ncomp,I,core,nvec,NSTOPF,IWHERE
+      
+      double precision x(ndim), f(ncomp),lam
+      real*8 userdata(6)
+
+      COMPLEX*16 RFREL1,RFREL2,EC(3),HC(3)
+
+      DIRNAM=DATA_DIR
+      
+      RADCOR = userdata(1)
+      RADCOT = userdata(2)
+      EPSVAC = userdata(3)
+      CC = userdata(4)
+      MU = userdata(5)
+      rad = userdata(6)
+
+      
+      pi=acos(-1.0D0)
+
+      lammin = 0.28D0
+      dlam = 4.0D0-0.28D0
+      lam = lammin + dlam*x(1) !shift to integral over solar spectrum
+
+      
+C This is ugly.  May want to make it so the file is set only once
+C  in the entire program
+      
+C     The optical constants:
+C     reference (background)
+      FILNAM(1)='vac.nk'
+      WLFAC(1)=1.0D-4 !factor so all wavelengths in micron
+C     core
+      FILNAM(2)='Au_babar.nk'
+      WLFAC(2)=1.0D0
+C     shell
+      FILNAM(3)='CeO2_patsalas.nk'
+      WLFAC(3)=1.0D-3
+      DO 901 I=1,3
+       FNAME(I)=DIRNAM(1:MAX(INDEX(DIRNAM,' ')-1,1))//
+     1          FILNAM(I)(1:MAX(INDEX(FILNAM(I),' ')-1,1))
+  901 CONTINUE
+  
+      CALL OPTCON(0,lam,FNAME,WLFAC, 
+     1             REFMED,REFRE1,REFIM1,REFRE2,REFIM2)
+
+      
+      IFILNAM="ASTMG173.csv"
+      IFNAME=DIRNAM(1:MAX(INDEX(DIRNAM,' ')-1,1))//
+     1          IFILNAM(1:MAX(INDEX(IFILNAM,' ')-1,1))
+      CALL SOLARINTENSITY(0,lam,IFNAME,solint,2)
+
+      
+      ! power of three since we are integrating over meter (10^-6) and
+      ! intensity is given in per nm (10^9)
+      ! uncomment this f to get 1000 W/m/m(as you should)
+      !f = (4.0D0-0.28D0 )* solint*1.0D3
+      !f = 1
+      RFREL1=DCMPLX(REFRE1,REFIM1)/REFMED
+      RFREL2=DCMPLX(REFRE2,REFIM2)/REFMED
+        
+      Xpara=2.0D0*PI*RADCOR*REFMED/lam
+      Ypara=2.0D0*PI*RADCOT*REFMED/lam
+       
+      Y1=2.0D0*PI*RADCOR*ABS(DCMPLX(REFRE1,REFIM1))/lam
+      Y2=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE1,REFIM1))/lam
+      Y3=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE2,REFIM2))/lam
+    
+      EXTMAX=RADCOT
+      RMAX=EXTMAX*SQRT(3.0D0)
+      Y4=2.0D0*PI*RMAX*REFMED/lam
+      YMAX=MAX(Y1,Y2,Y3,Y4)
+      NSTOPF=INT(YMAX+4.05D0*YMAX**0.3333D0+2.0D0)
+
+
+      CALL BHCOAT(Xpara,Ypara,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
+      QABS=QEXT-QSCA
+      
+      XP(1) = rad
+      XP(2) = pi*x(2) !theta
+      XP(3) = 2.0D0*pi*x(3) !phi
+     
+      CALL FIELDVMW(lam,REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     1                 RADCOR,RADCOT,XP,IWHERE,EC,HC)
+      I0 = 0.5*SQRT(EPSVAC/MU)*1.
+      EFSQ=ABS(EC(1))**2.0D0+ABS(EC(2))**2.0D0+ABS(EC(3))**2.0D0
+      OMEGA=2.0D0*PI*CC/(lam*1.0D-6) ! angular frequency [s-1]
+      IF(IWHERE.EQ.1) THEN
+        UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ/I0
+      ELSE IF(IWHERE.EQ.2) THEN
+        UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ/I0
+      ELSE
+        UABS=0.0D0
+      END IF
+
+C*****finalmente
+      f(1) = dlam*2.0D0*pi*pi*solint*UABS*sin(pi*x(2))
+
+      diffShellIsolPabs = 0
+      end
+        
+        
+C ********************************************************************
+C This is the integrand I_sol*p_abs to be integrated over radius, angle and wavelength
 C ********************************************************************
 
       integer function diffIsolPabs(ndim,x,ncomp,f,userdata,nvec,core)
@@ -487,11 +661,6 @@ C     shell
       CALL SOLARINTENSITY(0,lam,IFNAME,solint,2)
 
       
-      ! power of three since we are integrating over meter (10^-6) and
-      ! intensity is given in per nm (10^9)
-      ! uncomment this f to get 1000 W/m/m(as you should)
-      !f = (4.0D0-0.28D0 )* solint*1.0D3
-      !f = 1
       RFREL1=DCMPLX(REFRE1,REFIM1)/REFMED
       RFREL2=DCMPLX(REFRE2,REFIM2)/REFMED
         
@@ -545,16 +714,21 @@ C      WRITE(*,333) UABS,XP(1),XP(2),XP(3),lam
       
 C*****test cases**
 C*****uncomment this f to get the spectral integral of Qabs (verified)
-C      f(1) = (4.0D0-0.28D0 )*QABS*1.0D-6
+C      f(1) = (4.0D0-0.28D0 )*QABS
 
 C*****uncomment this f and set lambda above to get Qabs using Uabs at a certain wavelength
 C      f(1) = RADCOT**3.0D0*2.0D0*pi*pi
 C     &         *UABS*x(1)*x(1)*sin(pi*x(2))*1.0D-6
 C     &         /(PI*RADCOT*RADCOT)
       
+C*****power of three since we are integrating over meter (10^-6) and
+      ! intensity is given in per nm (10^9)
+      ! uncomment this f to get 1000 W/m/m(as you should)
+      !f = (4.0D0-0.28D0 )* solint    
+      
 C*****now combine the two... 
       f(1) = dlam*RADCOT**3.0D0*2.0D0*pi*pi
-     &         *UABS*x(1)*x(1)*sin(pi*x(2))*1.0D-6
+     &         *UABS*x(1)*x(1)*sin(pi*x(2))
      &         /(PI*RADCOT*RADCOT)*1.0D-6
 C*****awwwwww yeeeeeeah
 
@@ -569,6 +743,7 @@ C ********************************************************************
 C   WHICH = 1 --> Extraterrestrial radiation
 C   WHICH = 2 --> Global tilt
 C   WHICH = 3 --> Direct + circumsolar
+C *NB: raw data in per nm, but returns in per micron
 
       SUBROUTINE SOLARINTENSITY(INIT,WAVEL,FNAME,INTENSITY,WHICH)
 C
@@ -630,7 +805,7 @@ C simple interpolation
        
        INTENSITY=DOPT(1,WHICH+1,J-1)+(DOPT(1,WHICH+1,J)
      &  -DOPT(1,WHICH+1,J-1))*RAT
-
+       INTENSITY=INTENSITY*1.0D3
 C
 C
       RETURN

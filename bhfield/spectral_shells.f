@@ -285,7 +285,7 @@ C *********************************************************************
   100 CONTINUE
   
   
-      OPEN(29,FILE='UabsVr.dat',STATUS='UNKNOWN')
+      OPEN(29,FILE='UabsVr_spectral.dat',STATUS='UNKNOWN')
   701 FORMAT(3E13.5,E13.5)
       PRINT *, "resulting field"
       WRITE(29,*) WAVEL
