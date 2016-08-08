@@ -16,7 +16,7 @@ def planck(wav, T):
     a = 2.0*h*c**2
     b = h*c/(wav*k*T)
     intensity = a/ ( (wav**5) * (np.exp(b) - 1.0) )
-    return intensity
+    return intensity*1.0E-9
 
 #print bhcoat_pyed.bhcoat.__doc__
 
@@ -41,17 +41,28 @@ tlams = np.linspace(280E-9,1000E-9,100)
 #plt.plot(tlams,nCeO2(tlams),tlams,kCeO2(tlams),tlams,nAu(tlams),tlams,kAu(tlams))
 #plt.show()
 
-rcore = 30E-9
+rcore = 25E-9
 rrefvac = 1.0
 
 lammin = 280.E-9
-lammax = 4000.E-9
-lams = np.linspace(lammin,lammax,2000)
+lammax = 1000.E-9
+lams = np.linspace(lammin,lammax,1200)
 
-rshells = np.linspace(rcore,rcore*5,5)
+rshells = np.linspace(rcore,rcore*3,5)
 rrefrefs = np.linspace(1.0,2.35,5)
 
 plt.figure()
+plt.plot(lams*1E9,solI(lams)/np.max(solI(lams)),linestyle='--',color='goldenrod')
+
+#show emission spectrum
+temp = 1300
+#plt.plot(lams*1E9,planck(lams,temp)/np.max(planck(lams,temp)))
+plt.plot(lams*1E9,planck(lams,temp)/np.max(solI(lams)),'--r')
+#print planck(lams,800)
+
+qabsmax = 0
+
+
 for rshell in rshells:
   cabss = []
   qabss = []
@@ -65,6 +76,9 @@ for rshell in rshells:
     qabss.append(qext-qsca)
   
   #calculate the integral of Qabs over the spectrum
+  newmax = np.max(qabss)
+  if newmax > qabsmax:
+    qabsmax = newmax
   qabsint = simps(qabss,lams)
   print "integral over Qabs for rshell = " + str(rshell) + " = " + str(qabsint)  
   plt.plot(lams*1E9,qabss, label="t="+str(round((rshell-rcore)*1E9,1))+'nm')
@@ -72,8 +86,6 @@ for rshell in rshells:
 
 
 rshell = max(rshells)
-
-plt.plot(lams*1E9,solI(lams)/np.max(solI(lams)))
 
 cabss = []
 qabss = []
@@ -85,20 +97,16 @@ for lam in lams:
   [qext, qsca, qback, gsca] = bhcoat_pyed.bhcoat(xcore,xshell,rrefshell,rrefshell)
   cabss.append((qext-qsca)*np.pi*rshell**2.)
   qabss.append(qext-qsca)
-plt.plot(lams*1E9,qabss,'--', label='ceria only')
+plt.plot(lams*1E9,qabss,linestyle=':',color='black', label='ceria only')
 
 
 
 
-
-#show emission spectrum
-temp = 800
-plt.plot(lams*1E9,planck(lams,temp)/np.max(planck(lams,temp)))
-#print planck(lams,800)
 
 plt.xlabel('wavelength [nm]')
 plt.ylabel('Q_abs [1]')
 plt.xlim(lammin*1E9,lammax*1E9)
-plt.title('core radius = '+str(rcore*1E9)+'nm')
+plt.ylim(0,1.1*qabsmax)
+#plt.title('core radius = '+str(rcore*1E9)+'nm')
 plt.legend()
 plt.show()
