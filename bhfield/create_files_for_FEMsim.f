@@ -19,7 +19,7 @@
       CHARACTER*50 FNLOGF
       
       integer npar_s
-      real*8 userdata_s(6)
+      real*8 userdata_s(7)
       external diffIsolPabs, diffShellIsolPabs, bbfunc, bbint
       
       
@@ -41,7 +41,7 @@
 C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 C     Declare all relevant physical constants
 C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      WAVEL = 0.507D0 ! dummy wavelength
+      WAVEL = 0.507D0 ! dummy wavelength to initialize datafiles
       RADCOR = 0.03D0
       RADCOT = 0.06D0
       PI=ACOS(-1.0D0)
@@ -60,16 +60,10 @@ C     reference (background)
       FILNAM(1)='vac.nk'
       WLFAC(1)=1.0D-4 !factor so all wavelengths in micron
 C     core
-C      FILNAM(2)='test_material.nk'
-C      FILNAM(2)='Ag_palik.nk'
       FILNAM(2)='Au_babar.nk'
       WLFAC(2)=1.0D0
 C     shell
-C      FILNAM(3)='test_material.nk'
-C      FILNAM(3)='SiO2_palik.nk'
       FILNAM(3)='CeO2_patsalas.nk'
-C       FILNAM(3)='vac.nk'
-C      FILNAM(3)='Ag_palik.nk'
       WLFAC(3)=1.0D-3
       DO 901 I=1,3
        FNAME(I)=DIRNAM(1:MAX(INDEX(DIRNAM,' ')-1,1))//
@@ -100,11 +94,11 @@ C      FILNAM(3)='Ag_palik.nk'
       PRINT *, "  " , INTENSITY
       
       TEMP = 1000.0D0
-      CALL BBEPOW(WAVEL,TEMP,IB)
+      CALL BBINT(WAVEL,TEMP,IB)
       PRINT *, "blackbody emmisive power there at T=",TEMP
       PRINT *, "  ", IB
       
-      CALL BBEPOWDT(WAVEL,TEMP,IB)
+      CALL BBINTDT(WAVEL,TEMP,IB)
       PRINT *, "blackbody emmisive power DT there at T=",TEMP
       PRINT *, "  ", IB
 
@@ -115,11 +109,11 @@ C      rad = 0.025
       userdata_s(3) = EPSVAC
       userdata_s(4) = CC
       userdata_s(5) = MU
-C      userdata_s(6) = rad
-      npar_s = 6
+C      userdata_s(6) = rad !set in subroutine
+      npar_s = 7
       print *, "starting the business"
-      nshells = 50
-      !CALL IntegrateShellsFull(userdata_s,npar_s,nshells)
+      nshells = 10
+      CALL IntegrateShellsFull(userdata_s,npar_s,nshells)
 
    
       
@@ -136,33 +130,54 @@ C **********************************************************************
       implicit none
       
       integer nshells,npar,i
-      real*8 userdata(npar),rads(nshells),uabs(nshells)
-      real*8 radcot,rstep
-      external diffShellIsolPabs
+      real*8 userdata(npar)
+      real*8 rads(nshells),uabs(nshells),uem(nshells)!,uemdt(nshells)
+      real*8 radcot,rstep,t
+      external diffShellIsolPabs,diffShellIbbPabs
       
       radcot = userdata(2)
       rstep = radcot/dble(nshells-1)
       
-      
+      ! first do the absorption at each radial distance
       do 291 i=1,nshells
         rads(i) = dble(i-1)*rstep
         userdata(6) = rads(i)
-        call IntegrateGeneric(uabs(i),diffShellIsolPabs,
-     &              userdata,npar,3,1)
+C        call IntegrateGeneric(uabs(i),diffShellIsolPabs,
+C     &              userdata,npar,3,1)
         print *, '********',rads(i), uabs(i)
-        
   291 continue
       
       
+      t = 1000
+      !then do the emission
+      do 292 i=1,nshells
+        rads(i) = dble(i-1)*rstep
+        userdata(6) = rads(i)
+        userdata(7) = t
+        call IntegrateGeneric(uem(i),diffShellIbbPabs,
+     &              userdata,npar,3,1)
+        print *, '********',rads(i), uem(i)
+        
+  292 continue      
+      
+      !then the emission differentiated by T
+      
+
+      701 FORMAT(3E13.5,E13.5)
+      
       OPEN(44,FILE='UabsVr_full.dat',STATUS='UNKNOWN')
-  701 FORMAT(3E13.5,E13.5)
-      PRINT *, "resulting field"
       WRITE(44,*) 'Absorption per volume per unit irradiance'
       WRITE(44,*) '  units [=] (W m^-3) (W m^-2)^-1 '
       WRITE(44,*) '-----------'
       
-
+      OPEN(45,FILE='UabsVr_full.dat',STATUS='UNKNOWN')
+      WRITE(45,*) 'Absorption per volume per unit irradiance'
+      WRITE(45,*) '  units [=] (W m^-3) (W m^-2)^-1 '
+      WRITE(45,*) '-----------'
       
+      
+      
+      PRINT *, "resulting field"
       do 119 i=1,nshells
         WRITE(44,701) rads(i)*1.0E-6, uabs(i)
   119 continue   
@@ -171,6 +186,115 @@ C **********************************************************************
       return
       end
   
+  
+C ********************************************************************
+C This is the integrand I_bb*p_abs to be integrated over angle and 
+C wavelength only at a given radius
+C ********************************************************************
+
+      integer function diffShellIbbPabs(ndim,x,
+     &                        ncomp,f,userdata,nvec,pid)
+      implicit none
+      
+      real*8 pi,ibb,t
+      real*8 WLFAC(3),REFMED,REFRE1,REFIM1,REFRE2,REFIM2
+      real*8 QEXT,QSCA,QABS,QBACK,XP(3),UABS,MU,OMEGA,CC
+      real*8 EFSQ,I0,EPSVAC,rad,lammin
+      real*8 RADCOT,RADCOR,RMAX,EXTMAX,Xpara,Ypara,Y1,Y2,Y3,Y4,YMAX
+      
+      CHARACTER*80 DIRNAM,FILNAM(3),FNAME(3)
+      
+      integer ndim,ncomp,I,pid,nvec,NSTOPF,IWHERE
+      
+      double precision x(ndim), f(ncomp),lam
+      real*8 userdata(7)
+
+      COMPLEX*16 RFREL1,RFREL2,EC(3),HC(3)
+
+      DIRNAM=DATA_DIR
+      
+      RADCOR = userdata(1)
+      RADCOT = userdata(2)
+      EPSVAC = userdata(3)
+      CC = userdata(4)
+      MU = userdata(5)
+      rad = userdata(6)
+      t = userdata(7)
+
+      
+      pi=acos(-1.0D0)
+      lammin = 0.28D0
+      lam = lammin + x(1)/(1.0D0-x(1))  !shift to integral over infinite interval
+
+      
+C This is ugly.  May want to make it so the file is set only once
+C  in the entire program
+      
+C     The optical constants:
+C     reference (background)
+      FILNAM(1)='vac.nk'
+      WLFAC(1)=1.0D-4 !factor so all wavelengths in micron
+C     core
+      FILNAM(2)='Au_babar.nk'
+      WLFAC(2)=1.0D0
+C     shell
+      FILNAM(3)='CeO2_patsalas.nk'
+      WLFAC(3)=1.0D-3
+      DO 901 I=1,3
+       FNAME(I)=DIRNAM(1:MAX(INDEX(DIRNAM,' ')-1,1))//
+     1          FILNAM(I)(1:MAX(INDEX(FILNAM(I),' ')-1,1))
+  901 CONTINUE
+  
+      CALL OPTCON(0,lam,FNAME,WLFAC, 
+     1             REFMED,REFRE1,REFIM1,REFRE2,REFIM2)
+
+      RFREL1=DCMPLX(REFRE1,REFIM1)/REFMED
+      RFREL2=DCMPLX(REFRE2,REFIM2)/REFMED
+        
+      Xpara=2.0D0*PI*RADCOR*REFMED/lam
+      Ypara=2.0D0*PI*RADCOT*REFMED/lam
+       
+      Y1=2.0D0*PI*RADCOR*ABS(DCMPLX(REFRE1,REFIM1))/lam
+      Y2=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE1,REFIM1))/lam
+      Y3=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE2,REFIM2))/lam
+    
+      EXTMAX=RADCOT
+      RMAX=EXTMAX*SQRT(3.0D0)
+      Y4=2.0D0*PI*RMAX*REFMED/lam
+      YMAX=MAX(Y1,Y2,Y3,Y4)
+      NSTOPF=INT(YMAX+4.05D0*YMAX**0.3333D0+2.0D0)
+
+
+      CALL BHCOAT(Xpara,Ypara,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
+      QABS=QEXT-QSCA
+      
+      XP(1) = rad
+      XP(2) = pi*x(2) !theta
+      XP(3) = 2.0D0*pi*x(3) !phi
+     
+      CALL FIELDVMW(lam,REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     1                 RADCOR,RADCOT,XP,IWHERE,EC,HC)
+      I0 = 0.5*SQRT(EPSVAC/MU)*1.
+      EFSQ=ABS(EC(1))**2.0D0+ABS(EC(2))**2.0D0+ABS(EC(3))**2.0D0
+      OMEGA=2.0D0*PI*CC/(lam*1.0D-6) ! angular frequency [s-1]
+      IF(IWHERE.EQ.1) THEN
+        UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ/I0
+      ELSE IF(IWHERE.EQ.2) THEN
+        UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ/I0
+      ELSE
+        UABS=0.0D0
+      END IF
+
+      
+      call BBINT(lam,t,ibb)
+      
+C*****finalmente
+      f(1) = 2.0D0*pi*pi*ibb*UABS*sin(pi*x(2))
+      f(1) = f(1)/(1.0D0-x(1))/(1.0D0-x(1)) !infinite interval shift
+
+      diffShellIbbPabs = 0
+      end
+      
   
 
         
@@ -291,7 +415,8 @@ C*****finalmente
       diffShellIsolPabs = 0
       end
         
-        
+      
+      
 
         
 C ********************************************************************
@@ -374,20 +499,20 @@ C Function to calculate blackbody emissive power at a given temperature
 C  as a function of wavelength (in micron)
 C ***********************************************************************
       
-      SUBROUTINE BBEPOW(lambda, t, eb) 
+      SUBROUTINE BBINT(lambda, t, eb) 
 
       implicit none
 
 
       real*8 lambda, t, lambda_m
-      real*8 eb
+      real*8 eb,pi
       REAL*8 c_first_radiation
       REAL*8 c_second_radiation
       ! -- Local declarations --
 
       real*8 beta
       
-      print *, "did I make it?"
+      pi=ACOS(-1.0D0)
       
       lambda_m = lambda*1.0D-6 !converstion from micron to meter
       !lambda_m = lambda!converstion from micron to meter
@@ -396,7 +521,7 @@ C ***********************************************************************
       c_second_radiation = 14387.75225e-06
       beta  = c_second_radiation / (lambda_m * t)
       eb = c_first_radiation  / (lambda_m ** 5 * (exp(beta) - 1.0D0))
-      eb = eb*1.0D-6 ! per meter to per micron
+      eb = eb/pi*1.0D-6 ! per meter to per micron
       
 
       return
@@ -409,17 +534,18 @@ C  blackbody emissive power at a given temperature
 C  as a function of wavelength (in micron)
 C ***********************************************************************
       
-      SUBROUTINE BBEPOWDT(lambda, t, ebdt) 
+      SUBROUTINE BBINTDT(lambda, t, ebdt) 
 
       implicit none
 
 
       real*8 lambda, t, lambda_m
-      real*8 ebdt
+      real*8 ebdt,pi
       REAL*8 c1
       REAL*8 c2
       ! -- Local declarations --
 
+      pi=ACOS(-1.0D0)
       
       lambda_m = lambda*1.0D-6 !converstion from micron to meter
       
@@ -428,51 +554,11 @@ C ***********************************************************************
 
       ebdt = (c1*c2*EXP(c2/(t*lambda_m)))
       ebdt = ebdt/((-1.0D0+EXP(c2/(t*lambda_m)))**2*t**2*lambda_m**6)
+      ebdt = ebdt/pi*1.0D-6
     
       return
       end
       
-
-      
-
-C**************
-C blackbody intensity function in format for cuba
-C ******************
-C
-C !output in per micron
-        integer function bbint(ndim, x, ncomp, f,userdata)
-        implicit none
-        integer ndim, ncomp
-        cubareal x(ndim), f(ncomp),xi
-
-        real*8 t,pi
-        REAL*8 c1
-        REAL*8 c2
-        ! -- Local declarations --
-
-        real*8 userdata
-        
-        !converstion from micron to meter and transformation to 0-1 interval
-        !lambda_m = x/(1.0D0-x) 
-        
-        pi=ACOS(-1.0D0)
-        
-        t = userdata
-
-        c1 = 3.74177118e-16
-        c2 = 14387.75225e-06
-        
-        xi = x(1)/(1.0D0-x(1)) 
-        
-        !this gives sig T4
-        f = xi**3.0D0/(EXP(xi)-1.0D0)/(1.0D0-x(1))/(1.0D0-x(1))
-        f = f*c1/c2**4.0D0 * t**4.0D0 / pi
-        f = f*1.0D-6 ! per meter to per micron
-
-
-        bbint = 0
-        end
-        
 
 C ********************************************************************
 C integral over "extfunc" (input) using 4 choices for integration scheme
