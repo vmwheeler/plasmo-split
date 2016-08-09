@@ -106,18 +106,6 @@ C BH 59: check tangential continuity
       
       
       
-
-      SUBROUTINE VMWTEST(IWHERE)
-C     sanity check
-      IMPLICIT NONE
-      INTEGER IWHERE
-C
-      PRINT *, "hELLO, you asked for", IWHERE
-
-      RETURN
-      END
- 
-      
       SUBROUTINE RECMAX(IWHERE,XP,VALUE,VMAX)
 C
 C record max value and position for each domain
@@ -265,18 +253,6 @@ C check angle between E & H
      1      /(ENORM*HNORM))
       RETURN
       END
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
