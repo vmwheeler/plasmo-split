@@ -1,13 +1,13 @@
 #define BHFIELD_VERSION 'Oct 5, 2012'
 #define cubareal real*8    
 
-      PROGRAM full_spectrum
+      PROGRAM create_files_for_FEMsim
 
       IMPLICIT NONE
       REAL*8 UFTOL
       PARAMETER (UFTOL=1.0D-6)
       
-      INTEGER I,nshells
+      INTEGER I,nshells,ntemps
       
       REAL*8 WLFAC(3)
       
@@ -52,8 +52,8 @@ C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       
       
 C     log file
-      FNLOGF='bhfield.log'
-      OPEN(51,FILE=FNLOGF,STATUS='UNKNOWN')
+C      FNLOGF='bhfield.log'
+C      OPEN(51,FILE=FNLOGF,STATUS='UNKNOWN')
       
 C     The optical constants:
 C     reference (background)
@@ -112,8 +112,9 @@ C      rad = 0.025
 C      userdata_s(6) = rad !set in subroutine
       npar_s = 7
       print *, "starting the business"
-      nshells = 10
-      CALL IntegrateShellsFull(userdata_s,npar_s,nshells)
+      nshells = 21
+      ntemps = 20
+      CALL IntegrateShellsFull(userdata_s,npar_s,nshells,ntemps)
 
    
       
@@ -125,15 +126,18 @@ C **********************************************************************
 C Should be final subroutine that produces files for MATLAB
 C **********************************************************************
       
-      SUBROUTINE IntegrateShellsFull(userdata,npar,nshells)
+      SUBROUTINE IntegrateShellsFull(userdata,npar,nshells,ntemps)
       
       implicit none
       
-      integer nshells,npar,i
+      integer nshells,npar,i,j,k
+      integer ntemps
       real*8 userdata(npar)
-      real*8 rads(nshells),uabs(nshells),uem(nshells)!,uemdt(nshells)
-      real*8 radcot,rstep,t
+      real*8 rads(nshells),uabs(nshells),temps(ntemps)
+      real*8 uem(nshells,ntemps),uemdt(nshells,ntemps)
+      real*8 radcot,rstep,t,delt,tlow,thigh
       external diffShellIsolPabs,diffShellIbbPabs
+      external diffShellIbbdTPabs
       
       radcot = userdata(2)
       rstep = radcot/dble(nshells-1)
@@ -142,45 +146,77 @@ C **********************************************************************
       do 291 i=1,nshells
         rads(i) = dble(i-1)*rstep
         userdata(6) = rads(i)
-C        call IntegrateGeneric(uabs(i),diffShellIsolPabs,
-C     &              userdata,npar,3,1)
-        print *, '********',rads(i), uabs(i)
+        call IntegrateGeneric(uabs(i),diffShellIsolPabs,
+     &              userdata,npar,3,1)
   291 continue
       
       
-      t = 1000
-      !then do the emission
-      do 292 i=1,nshells
-        rads(i) = dble(i-1)*rstep
-        userdata(6) = rads(i)
+      tlow = 300
+      thigh = 2000
+      delt = (thigh-tlow)/dble(ntemps-1)
+      t = tlow
+      !then do the emission and temp deriv of emission
+      do 292 j=1,ntemps
+        !rads(i) = dble(i-1)*rstep
         userdata(7) = t
-        call IntegrateGeneric(uem(i),diffShellIbbPabs,
+        temps(j)=t
+        print *,delt
+        do 293 i=1,nshells
+          userdata(6) = rads(i)
+          call IntegrateGeneric(uem(i,j),diffShellIbbPabs,
      &              userdata,npar,3,1)
-        print *, '********',rads(i), uem(i)
-        
-  292 continue      
+          call IntegrateGeneric(uemdt(i,j),diffShellIbbdTPabs,
+     &              userdata,npar,3,1)
+  293   continue
+        t = t + delt
+  292 continue
       
-      !then the emission differentiated by T
       
 
-      701 FORMAT(3E13.5,E13.5)
+  701 FORMAT(3E13.5,E13.5)
+  702 FORMAT(3E13.5)
       
-      OPEN(44,FILE='UabsVr_full.dat',STATUS='UNKNOWN')
-      WRITE(44,*) 'Absorption per volume per unit irradiance'
-      WRITE(44,*) '  units [=] (W m^-3) (W m^-2)^-1 '
+      OPEN(44,FILE='UabsVr.dat',STATUS='UNKNOWN')
+      WRITE(44,*) 'Absorption per volume'
+      WRITE(44,*) '  units [=] (W m^-3)'
       WRITE(44,*) '-----------'
-      
-      OPEN(45,FILE='UabsVr_full.dat',STATUS='UNKNOWN')
-      WRITE(45,*) 'Absorption per volume per unit irradiance'
-      WRITE(45,*) '  units [=] (W m^-3) (W m^-2)^-1 '
+C      
+      OPEN(45,FILE='UemVr.dat',STATUS='UNKNOWN')
+      WRITE(45,*) 'Emission per volume'
+      WRITE(45,*) '  units [=] (W m^-3)'
+      WRITE(45,'(A13)',advance='no') 'temperatures:'
+      do 123 k=1,ntemps
+        WRITE(45,702,advance='no') temps(k)
+  123 continue
+      WRITE(45,*)
       WRITE(45,*) '-----------'
+C      
+      OPEN(46,FILE='UemdTVr.dat',STATUS='UNKNOWN')
+      WRITE(46,*) 'Emission per volume'
+      WRITE(46,*) '  units [=] (W m^-3)'
+      WRITE(46,'(A13)',advance='no') 'temperatures:'
+      do 124 k=1,ntemps
+        WRITE(46,702,advance='no') temps(k)
+  124 continue
+      WRITE(46,*)
+      WRITE(46,*) '-----------'
       
       
-      
-      PRINT *, "resulting field"
       do 119 i=1,nshells
         WRITE(44,701) rads(i)*1.0E-6, uabs(i)
   119 continue   
+  
+      
+      do 120 i=1,nshells
+        WRITE(45,702,advance='no') rads(i)
+        WRITE(46,702,advance='no') rads(i)
+        do 121 j = 1,ntemps
+          WRITE(45,702,advance='no') uem(i,j)
+          WRITE(46,702,advance='no') uemdt(i,j)
+  121   continue
+        WRITE(45,*)
+        WRITE(46,*)
+  120 continue
       
   
       return
@@ -285,16 +321,130 @@ C     shell
         UABS=0.0D0
       END IF
 
-      
       call BBINT(lam,t,ibb)
+      
+      !PRINT *, lam,t,ibb
       
 C*****finalmente
       f(1) = 2.0D0*pi*pi*ibb*UABS*sin(pi*x(2))
       f(1) = f(1)/(1.0D0-x(1))/(1.0D0-x(1)) !infinite interval shift
-
+C *****this confirms that integration over infinite interval works for ibb
+C      f(1) = ibb/(1.0D0-x(1))/(1.0D0-x(1))
+      
       diffShellIbbPabs = 0
       end
       
+      
+C ********************************************************************
+C This is the integrand d(I_bb)/dT*p_abs to be integrated over angle and 
+C wavelength only at a given radius
+C ********************************************************************
+
+      integer function diffShellIbbdTPabs(ndim,x,
+     &                        ncomp,f,userdata,nvec,pid)
+      implicit none
+      
+      real*8 pi,ibbdt,t
+      real*8 WLFAC(3),REFMED,REFRE1,REFIM1,REFRE2,REFIM2
+      real*8 QEXT,QSCA,QABS,QBACK,XP(3),UABS,MU,OMEGA,CC
+      real*8 EFSQ,I0,EPSVAC,rad,lammin
+      real*8 RADCOT,RADCOR,RMAX,EXTMAX,Xpara,Ypara,Y1,Y2,Y3,Y4,YMAX
+      
+      CHARACTER*80 DIRNAM,FILNAM(3),FNAME(3)
+      
+      integer ndim,ncomp,I,pid,nvec,NSTOPF,IWHERE
+      
+      double precision x(ndim), f(ncomp),lam
+      real*8 userdata(7)
+
+      COMPLEX*16 RFREL1,RFREL2,EC(3),HC(3)
+
+      DIRNAM=DATA_DIR
+      
+      RADCOR = userdata(1)
+      RADCOT = userdata(2)
+      EPSVAC = userdata(3)
+      CC = userdata(4)
+      MU = userdata(5)
+      rad = userdata(6)
+      t = userdata(7)
+
+      
+      pi=acos(-1.0D0)
+      lammin = 0.28D0
+      lam = lammin + x(1)/(1.0D0-x(1))  !shift to integral over infinite interval
+
+      
+C This is ugly.  May want to make it so the file is set only once
+C  in the entire program
+      
+C     The optical constants:
+C     reference (background)
+      FILNAM(1)='vac.nk'
+      WLFAC(1)=1.0D-4 !factor so all wavelengths in micron
+C     core
+      FILNAM(2)='Au_babar.nk'
+      WLFAC(2)=1.0D0
+C     shell
+      FILNAM(3)='CeO2_patsalas.nk'
+      WLFAC(3)=1.0D-3
+      DO 901 I=1,3
+       FNAME(I)=DIRNAM(1:MAX(INDEX(DIRNAM,' ')-1,1))//
+     1          FILNAM(I)(1:MAX(INDEX(FILNAM(I),' ')-1,1))
+  901 CONTINUE
+  
+      CALL OPTCON(0,lam,FNAME,WLFAC, 
+     1             REFMED,REFRE1,REFIM1,REFRE2,REFIM2)
+
+      RFREL1=DCMPLX(REFRE1,REFIM1)/REFMED
+      RFREL2=DCMPLX(REFRE2,REFIM2)/REFMED
+        
+      Xpara=2.0D0*PI*RADCOR*REFMED/lam
+      Ypara=2.0D0*PI*RADCOT*REFMED/lam
+       
+      Y1=2.0D0*PI*RADCOR*ABS(DCMPLX(REFRE1,REFIM1))/lam
+      Y2=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE1,REFIM1))/lam
+      Y3=2.0D0*PI*RADCOT*ABS(DCMPLX(REFRE2,REFIM2))/lam
+    
+      EXTMAX=RADCOT
+      RMAX=EXTMAX*SQRT(3.0D0)
+      Y4=2.0D0*PI*RMAX*REFMED/lam
+      YMAX=MAX(Y1,Y2,Y3,Y4)
+      NSTOPF=INT(YMAX+4.05D0*YMAX**0.3333D0+2.0D0)
+
+
+      CALL BHCOAT(Xpara,Ypara,RFREL1,RFREL2,NSTOPF,QEXT,QSCA,QBACK)
+      QABS=QEXT-QSCA
+      
+      XP(1) = rad
+      XP(2) = pi*x(2) !theta
+      XP(3) = 2.0D0*pi*x(3) !phi
+     
+      CALL FIELDVMW(lam,REFMED,REFRE1,REFIM1,REFRE2,REFIM2,
+     1                 RADCOR,RADCOT,XP,IWHERE,EC,HC)
+      I0 = 0.5*SQRT(EPSVAC/MU)*1.
+      EFSQ=ABS(EC(1))**2.0D0+ABS(EC(2))**2.0D0+ABS(EC(3))**2.0D0
+      OMEGA=2.0D0*PI*CC/(lam*1.0D-6) ! angular frequency [s-1]
+      IF(IWHERE.EQ.1) THEN
+        UABS=EPSVAC*OMEGA*REFRE1*REFIM1*EFSQ/I0
+      ELSE IF(IWHERE.EQ.2) THEN
+        UABS=EPSVAC*OMEGA*REFRE2*REFIM2*EFSQ/I0
+      ELSE
+        UABS=0.0D0
+      END IF
+
+      call BBINTDT(lam,t,ibbdt)
+      
+      !PRINT *, lam,t,ibb
+      
+C*****finalmente
+      f(1) = 2.0D0*pi*pi*ibbdt*UABS*sin(pi*x(2))
+      f(1) = f(1)/(1.0D0-x(1))/(1.0D0-x(1)) !infinite interval shift
+C *****this confirms that integration over infinite interval works for ibb
+C      f(1) = ibb/(1.0D0-x(1))/(1.0D0-x(1))
+      
+      diffShellIbbdTPabs = 0
+      end
   
 
         
@@ -469,7 +619,6 @@ C
   570   FORMAT('Reading n,k(',I1,'): ndata = ',I4,' wavelength = ',
      *  E13.6,' - ',E13.6,' file = [',A,']')
         WRITE(*,570) 1,ND,DOPT(1,1,1),DOPT(1,1,ND),TRIM(FNAME)
-        WRITE(51,570) 1,ND,DOPT(1,1,1),DOPT(1,1,ND),TRIM(FNAME)
 
       END IF
 C
@@ -583,7 +732,7 @@ C   choice = 4 --> Cuhre
       parameter (last = 4)
       parameter (seed = 0)
       parameter (mineval = 0)
-      parameter (maxeval = 20000)
+      parameter (maxeval = 100000)
 
       integer nstart, nincrease, nbatch, gridno,choice
       integer*8 spin
