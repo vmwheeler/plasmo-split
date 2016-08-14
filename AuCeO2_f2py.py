@@ -41,11 +41,11 @@ tlams = np.linspace(280E-9,1000E-9,100)
 #plt.plot(tlams,nCeO2(tlams),tlams,kCeO2(tlams),tlams,nAu(tlams),tlams,kAu(tlams))
 #plt.show()
 
-rcore = 25E-9
+rcore = 30E-9
 rrefvac = 1.0
 
 lammin = 280.E-9
-lammax = 1000.E-9
+lammax = 4000.E-9
 lams = np.linspace(lammin,lammax,1200)
 
 rshells = np.linspace(rcore,rcore*3,5)
@@ -84,7 +84,6 @@ for rshell in rshells:
   plt.plot(lams*1E9,qabss, label="t="+str(round((rshell-rcore)*1E9,1))+'nm')
 
 
-
 rshell = max(rshells)
 
 cabss = []
@@ -101,12 +100,10 @@ plt.plot(lams*1E9,qabss,linestyle=':',color='black', label='ceria only')
 
 
 
-
-
 plt.xlabel('wavelength [nm]')
 plt.ylabel('Q_abs [1]')
 plt.xlim(lammin*1E9,lammax*1E9)
-plt.ylim(0,1.1*qabsmax)
+#plt.ylim(0,1.1*qabsmax)
 #plt.title('core radius = '+str(rcore*1E9)+'nm')
 plt.legend()
 plt.show()
