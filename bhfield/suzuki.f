@@ -106,18 +106,6 @@ C BH 59: check tangential continuity
       
       
       
-
-      SUBROUTINE VMWTEST(IWHERE)
-C     sanity check
-      IMPLICIT NONE
-      INTEGER IWHERE
-C
-      PRINT *, "hELLO, you asked for", IWHERE
-
-      RETURN
-      END
- 
-      
       SUBROUTINE RECMAX(IWHERE,XP,VALUE,VMAX)
 C
 C record max value and position for each domain
@@ -265,18 +253,6 @@ C check angle between E & H
      1      /(ENORM*HNORM))
       RETURN
       END
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -513,7 +489,9 @@ C
   570   FORMAT('Reading n,k(',I1,'): ndata = ',I4,' wavelength = ',
      *  E13.6,' - ',E13.6,' file = [',A,']')
         WRITE(*,570) I,ND(I),DOPT(I,1,1),DOPT(I,1,ND(I)),TRIM(FNAME(I))
+#ifdef WRITE_LOG
         WRITE(51,570) I,ND(I),DOPT(I,1,1),DOPT(I,1,ND(I)),TRIM(FNAME(I))
+#endif /* WRITE_LOG */
   550  CONTINUE
       END IF
 C
@@ -881,11 +859,12 @@ C BH 103,127 -> PSIBY*XXINY-PSINY*XXIBY = -i
 C check equivalence of three C's as a round-off indicator
        RCEQ1=ABS((CEQ1-C(N))/C(N))
        RCEQ2=ABS((CEQ2-C(N))/C(N))
+#ifdef WRITE_LOG
        IF((RCEQ1.GT.UFTOL).OR.(RCEQ2.GT.UFTOL)) THEN
         WRITE(51,*) 'c_n not equal! n,rdev(Ceq1),rdev(Ceq2)',
      1              N,RCEQ1,RCEQ2
        ENDIF
-
+#endif /* WRITE_LOG */
 
 #ifdef CHECK_UNDERFLOW
 
@@ -1035,6 +1014,7 @@ C BH 183
 C
   200 CONTINUE
 
+#ifdef WRITE_LOG
   812 FORMAT(2E13.5,' ',7('(',E12.5,',',E12.5,')'))
       WRITE(51,*) 'BHCOAT pamareters: x,y, m1,m2,',
      1            'x1(=m1x),x2(=m2x),y2(=m2y),m(=m2/m1)'
@@ -1042,6 +1022,7 @@ C
      1              RFREL2G*YG,RFREL2G/RFREL1G
   813 FORMAT(A3,I3,':',8('(',E12.5,',',E12.5,')'))
       WRITE(51,*) 'Scattering & field coeffs: n: a,b,c,d,f,g,v,w'
+#endif /* WRITE_LOG */
       DO 308 N=1,NORD
        AW=A(N)
        BW=B(N)
@@ -1051,7 +1032,9 @@ C
        GW=G(N)
        VW=V(N)
        WW=W(N)
+#ifdef WRITE_LOG
        WRITE(51,813) 'Sca',N,AW,BW,CW,DW,FW,GW,VW,WW
+#endif /* WRITE_LOG */
   308 CONTINUE
 
 C 814 FORMAT(A3,I3,':',4('(',E12.5,',',E12.5,')'))
@@ -1060,6 +1043,7 @@ C     DO 307 N=1,NORD
 C      WRITE(51,814) 'Aux',N,ANCW(N),BNCW(N)
 C 307 CONTINUE
 
+#ifdef WRITE_LOG
   815 FORMAT(A3,I3,':',4E12.5,';',2E12.5,';',2E12.5)
       WRITE(51,*) 'Surface mode check: ',
      1'Abs(Denominator) P(a,d,g,w),Q(b,c,f,v),R(d,g,w),S(c,f,v);',
@@ -1069,6 +1053,7 @@ C 307 CONTINUE
      1 ABS(SW(N)),ABS(TW(N)/RW(N)),ABS(UW(N)/SW(N)),
      2 ABS(ANCW(N)),ABS(BNCW(N))
   306 CONTINUE
+#endif /* WRITE_LOG */
 
 C Quick hack to check NaN
       TEMP=A(NORD)+F(NORD)+W(NORD)
@@ -1123,9 +1108,12 @@ C      QBACK=XBACK*CONJG(XBACK)
        QBACK=REAL(XBACK*CONJG(XBACK))
        QBACK=(1.0D0/(Y*Y))*QBACK
 
+#ifdef WRITE_LOG
+       
  5152  FORMAT(/"BHCOAT: Check consistency for different sum orders")
        WRITE(51,5152)
        WRITE(51,*) '[NORD ] QSCA, QEXT, QBACK: ',NORD,QSCA,QEXT,QBACK
+#endif /* WRITE_LOG */
       END IF
 C
 C final result to be returned
@@ -1148,11 +1136,12 @@ C <arprec> bug: (-1.0D0)**RN -> MPLOG error!
 C     QBACK=XBACK*CONJG(XBACK)
       QBACK=REAL(XBACK*CONJG(XBACK))
       QBACK=(1.0D0/(Y*Y))*QBACK
-
+#ifdef WRITE_LOG
       WRITE(51,*) '[NSTOP] QSCA, QEXT, QBACK: ',NSTOP,QSCA,QEXT,QBACK
 
  5153 FORMAT("cf. x->Inf Qext->2 (BH107); Qback->R(0deg) (BH123)"/)
       WRITE(51,5153)
+#endif /* WRITE_LOG */
 C
       RETURN
       END
@@ -1786,7 +1775,7 @@ C
        UFRAT=ABS(EABS/EFCMAX)
        CALL UFCHECK1(UFRAT,'FIELCT:CHECK_SURFACE_MODE')
 #endif
-
+#ifdef WRITE_LOG
        write(51,*) ''
        write(51,*) 'FIELCT - Large EF (Surface mode?) EABS = ',
      1 EABS,'(some En >',ESMBIG,') at (R,THETA,PHI):',
@@ -1804,6 +1793,7 @@ C
      1                 FMAX,GMAX,VMAX,WMAX
        write(51,9119) 'ABS(f,g,v,w)               ',
      1                 ABS(FMAX),ABS(GMAX),ABS(VMAX),ABS(WMAX)
+#endif /* WRITE_LOG */
 
       END IF
 
@@ -1940,7 +1930,7 @@ C       ************************************************
 C jn(x)
 
 C check limits
-
+#ifdef WRITE_LOG
       IF(ABS(X).LT.1.0D-3) THEN
        WRITE(51,*) 'JBESSE: ABS(X) < 1.0D-3; check downward ',
      1 'recurrence; expected -> j_0(0) = 1, j_n(0) = 0 (n > 0)'
@@ -1954,6 +1944,8 @@ C check limits
 
       END IF
 
+#endif /* WRITE_LOG */
+      
 C check other algorithms
 
 C Case 0: upward recurrence NG
@@ -2049,7 +2041,7 @@ C      RL=L*ONE -> no need
 C yn(x)
 
 C limits
-
+#ifdef WRITE_LOG
       IF(ABS(X).LT.1.0D-3) THEN
        WRITE(51,*) 'YBESSE: ABS(X) < 1.0D-3; check upward ',
      1 'recurrence; expected -> y_n(0) = -INF'
@@ -2062,7 +2054,7 @@ C limits
 
 
       END IF
-
+#endif /* WRITE_LOG */
 C Case 1: upward reccurence (fails)
 
 
@@ -2126,7 +2118,7 @@ C output y_n(x) for round-off checking (im(x) != 0)
 C Dn(x)
 
 C limits
-
+#ifdef WRITE_LOG
       IF(ABS(X).LT.1.0D-3) THEN
        WRITE(51,*) 'DBESSE: ABS(X) < 1.0D-3; check downward ',
      1 'recurrence; expected -> D_n(0) = INF'
@@ -2139,6 +2131,7 @@ C limits
 
 
       END IF
+#endif /* WRITE_LOG */
 
       NMX=AINT(MAX(DBLE(NORD),ABS(X)))+15
 

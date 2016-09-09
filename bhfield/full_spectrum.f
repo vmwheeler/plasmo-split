@@ -45,7 +45,7 @@
 C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 C     Declare all relevant physical constants
 C     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      WAVEL = 0.507D0
+      WAVEL = 0.507D0 ! dummy wavelength
       RADCOR = 0.03D0
       RADCOT = 0.06D0
       PI=ACOS(-1.0D0)
