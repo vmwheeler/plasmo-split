@@ -40,7 +40,7 @@ temp = 700
 #plt.plot(lams*1E9,planck(lams,temp)/np.max(planck(lams,temp)))
 plt.loglog(lams*1E9,planck(lams,temp))
 plt.loglog(lams*1E9,planck(lams,500))
-plt.loglog(lams*1E9,planck(lams,80bla0))
+plt.loglog(lams*1E9,planck(lams,800))
 plt.loglog(lams*1E9,planck(lams,1000))
 #plt.loglog(lams*1E9,planck(lams,5777)/15000.)
 #print planck(lams,800)
