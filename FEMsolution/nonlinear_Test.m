@@ -4,6 +4,7 @@ addpath('/home/vmwheeler/Code/chapterxx_r/code/Base');
 addpath('/home/vmwheeler/Code/chapterxx_r/code/Elements');
 addpath('/home/vmwheeler/Code/chapterxx_r/code/ForceTerms/');
 addpath('/home/vmwheeler/Code/chapterxx_r/code/Extras');
+addpath('./NLTools')
 
 %% Physical and numerical constants
 numEle = 20;
@@ -37,7 +38,7 @@ end
 
 %% Create elements from mesh
 % set the force term 
-fhandle = @(x,t) 10 * sin(x);
+fhandle = @(x,t) 100 * sin(x);
 
 % assign nodes to elements
 for i = 1:numEle
@@ -57,12 +58,19 @@ BC2 = BoundaryCondition(2,1,numNodes,0,0,1.0);
 sysEQ.addBC(BC2);
 
 
+
 %% Solve!
 sysEQ.ready()
 for n = 1:numSteps
     fprintf('**********\nTimestep #%i\n**********\n',n)
     gs4.time_march(sysEQ);
 end
+
+ydfin=zeros(numNodes,1)
+for i = 1:numNodes
+    ydfin(i) = sysEQ.nodes(i).yd;
+end
+EvalResidual(sysEQ,gs4,ydfin);
 
 
 %% Post-process
@@ -71,10 +79,10 @@ for j = 1:numNodes
     sol(j) = sysEQ.nodes(j).y;
 end
 
-
+sysEQ.computeDirs()
 for i = 1:numEle
     xFlux(i) = (sysEQ.ele(i).nodes(2).loc + sysEQ.ele(i).nodes(1).loc)/2;
-    flux(i) = -sysEQ.ele(i).yp;
+    flux(i) = sysEQ.ele(i).yp;
 end
 
 hT = figure(3);

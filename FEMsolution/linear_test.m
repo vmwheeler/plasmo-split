@@ -6,7 +6,7 @@ addpath('/home/vmwheeler/Code/chapterxx_r/code/ForceTerms/');
 addpath('/home/vmwheeler/Code/chapterxx_r/code/Extras');
 
 %% Physical and numerical constants
-numEle = 20;
+numEle = 10;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
 tEnd = 50.0;
@@ -37,7 +37,7 @@ end
 
 %% Create elements from mesh
 % set the force term 
-fhandle = @(x,t) 10 * sin(x);
+fhandle = @(x,t) 100 * sin(x);
 
 % assign nodes to elements
 for i = 1:numEle
@@ -78,10 +78,10 @@ for j = 1:numNodes
     sol(j) = sysEQ.nodes(j).y;
 end
 
-
+sysEQ.computeDirs()
 for i = 1:numEle
     xFlux(i) = (sysEQ.ele(i).nodes(2).loc + sysEQ.ele(i).nodes(1).loc)/2;
-    flux(i) = -sysEQ.ele(i).yp;
+    flux(i) = sysEQ.ele(i).yp;
 end
 
 hT = figure(3);
