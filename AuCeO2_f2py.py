@@ -45,8 +45,9 @@ rcore = 30E-9
 rrefvac = 1.0
 
 lammin = 280.E-9
-lammax = 4000.E-9
-lams = np.linspace(lammin,lammax,1200)
+lammax = 1200.E-9
+nlams = 1200
+lams = np.linspace(lammin,lammax,nlams)
 
 rshells = np.linspace(rcore,rcore*3,5)
 rrefrefs = np.linspace(1.0,2.35,5)
@@ -62,26 +63,31 @@ plt.plot(lams*1E9,planck(lams,temp)/np.max(solI(lams)),'--r')
 
 qabsmax = 0
 
+datout = []
+filehead = "wavelength[m] "
+datout.append(np.transpose(lams))
 
 for rshell in rshells:
-  cabss = []
-  qabss = []
-  for lam in lams:
-    xcore = 2.*np.pi*rcore*rrefvac/lam
-    xshell= 2.*np.pi*rshell*rrefvac/lam
-    rrefcore = nAu(lam) + kAu(lam)*1j
-    rrefshell = nCeO2(lam) + kCeO2(lam)*1j
-    [qext, qsca, qback, gsca] = bhcoat_pyed.bhcoat(xcore, xshell, rrefcore, rrefshell)
-    cabss.append((qext-qsca)*np.pi*rshell**2.)
-    qabss.append(qext-qsca)
+    cabss = []
+    qabss = []
+    for lam in lams:
+        xcore = 2.*np.pi*rcore*rrefvac/lam
+        xshell= 2.*np.pi*rshell*rrefvac/lam
+        rrefcore = nAu(lam) + kAu(lam)*1j
+        rrefshell = nCeO2(lam) + kCeO2(lam)*1j
+        [qext, qsca, qback, gsca] = bhcoat_pyed.bhcoat(xcore, xshell, rrefcore, rrefshell)
+        cabss.append((qext-qsca)*np.pi*rshell**2.)
+        qabss.append(qext-qsca)
   
   #calculate the integral of Qabs over the spectrum
-  newmax = np.max(qabss)
-  if newmax > qabsmax:
-    qabsmax = newmax
-  qabsint = simps(qabss,lams)
-  print "integral over Qabs for rshell = " + str(rshell) + " = " + str(qabsint)  
-  plt.plot(lams*1E9,qabss, label="t="+str(round((rshell-rcore)*1E9,1))+'nm')
+    newmax = np.max(qabss)
+    if newmax > qabsmax:
+        qabsmax = newmax
+    qabsint = simps(qabss,lams)
+    print "integral over Qabs for rshell = " + str(rshell) + " = " + str(qabsint) 
+    datout.append(qabss)
+    filehead += "Qabs--" + str(rshell) + "nm[1] "
+    plt.plot(lams*1E9,qabss, label="t="+str(round((rshell-rcore)*1E9,1))+'nm')
 
 
 rshell = max(rshells)
@@ -89,15 +95,14 @@ rshell = max(rshells)
 cabss = []
 qabss = []
 for lam in lams:
-  xcore = 2.*np.pi*rcore*rrefvac/lam
-  xshell= 2.*np.pi*rshell*rrefvac/lam
-  rrefcore = nCeO2(lam) + kCeO2(lam)*1j
-  rrefshell = nCeO2(lam) + kCeO2(lam)*1j
-  [qext, qsca, qback, gsca] = bhcoat_pyed.bhcoat(xcore,xshell,rrefshell,rrefshell)
-  cabss.append((qext-qsca)*np.pi*rshell**2.)
-  qabss.append(qext-qsca)
+	xcore = 2.*np.pi*rcore*rrefvac/lam
+	xshell= 2.*np.pi*rshell*rrefvac/lam
+	rrefcore = nCeO2(lam) + kCeO2(lam)*1j
+	rrefshell = nCeO2(lam) + kCeO2(lam)*1j
+	[qext, qsca, qback, gsca] = bhcoat_pyed.bhcoat(xcore,xshell,rrefshell,rrefshell)
+	cabss.append((qext-qsca)*np.pi*rshell**2.)
+	qabss.append(qext-qsca)
 plt.plot(lams*1E9,qabss,linestyle=':',color='black', label='ceria only')
-
 
 
 plt.xlabel('wavelength [nm]')
@@ -107,3 +112,12 @@ plt.xlim(lammin*1E9,lammax*1E9)
 #plt.title('core radius = '+str(rcore*1E9)+'nm')
 plt.legend()
 plt.show()
+
+#output data
+
+datout.append(solI(lams))
+datout.append(planck(lams,temp))
+filehead += "Solar Intensity[W/m^2/sr] " + "BB intensity@" + str(temp)+"K[W/m^2/sr]"
+
+datout = np.array(datout)
+np.savetxt('forLance.dat',np.transpose(datout),delimiter=' ',header=filehead)
