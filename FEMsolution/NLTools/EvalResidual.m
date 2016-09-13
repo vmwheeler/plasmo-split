@@ -11,9 +11,11 @@ for i = 1:sys.nNodes
     ydnpl6w1(i) = ydn + gs4.lam6w1*(ydg(i)-ydn);
 end
 
-%ynpw1
-%ydnpl6w1
-f=sys.force
-Res=sys.bigC*ydnpl6w1 + sys.bigK*ynpw1 - sys.force
+Res=sys.bigC*ydnpl6w1 + sys.bigK*ynpw1 + sys.force;
+
+
+Res(sys.nNodes) = 0;
+
+Res
 
 end
