@@ -11,17 +11,24 @@ for i = 1:sys.nNodes
     ydnpl6w1(i) = ydn + gs4.lam6w1*(ydg(i)-ydn);
 end
 
-%ynpw1
-%ydnpl6w1
-
 % set type 2 and 3 BC values in stiffness matrices
 Cee = sys.bigC;
 Kay = sys.bigK;
 exF = sys.force;
 for i = 1:sys.nbc
-    [Cee,Kay,exF] = sys.bcs(i).applytype23(Cee,Kay,exF);
+    if sys.bcs(i).type == 2 || sys.bcs(i) == 3
+        [Cee,Kay,exF] = sys.bcs(i).applytype23(Cee,Kay,exF);
+    end
 end
 
-Res=Cee*ydnpl6w1 + Kay*ynpw1 + exF
+Res = Cee*ydnpl6w1 + Kay*ynpw1 + exF;
+
+for i = 1:sys.nbc
+    if sys.bcs(i).type == 1
+        Res(sys.bcs(i).where) = 0;
+    end
+end
+
+Res
 
 end
