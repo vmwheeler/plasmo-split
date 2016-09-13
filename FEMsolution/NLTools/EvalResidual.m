@@ -13,7 +13,15 @@ end
 
 %ynpw1
 %ydnpl6w1
-f=sys.force
-Res=sys.bigC*ydnpl6w1 + sys.bigK*ynpw1 - sys.force
+
+% set type 2 and 3 BC values in stiffness matrices
+Cee = sys.bigC;
+Kay = sys.bigK;
+exF = sys.force;
+for i = 1:sys.nbc
+    [Cee,Kay,exF] = sys.bcs(i).applytype23(Cee,Kay,exF);
+end
+
+Res=Cee*ydnpl6w1 + Kay*ynpw1 + exF
 
 end
