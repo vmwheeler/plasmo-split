@@ -1,7 +1,8 @@
 clear all;
 close all;
 clc;
-pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+%pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
 addpath(strcat(pathtogs4,'/Base'));
 addpath(strcat(pathtogs4,'/Elements'));
 addpath(strcat(pathtogs4,'/ForceTerms/'));
@@ -13,7 +14,7 @@ numEle = 20;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
 tEnd = 50.0;
-numSteps = 20;
+numSteps = 10;
 dt=tEnd/numSteps;
 
 gs4 = GS4(rhoMax,rhoMin,rhoEss,dt,1);
