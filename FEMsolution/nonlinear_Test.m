@@ -11,7 +11,7 @@ numEle = 20;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
 tEnd = 50.0;
-numSteps = 10;
+numSteps = 30;
 dt=tEnd/numSteps;
 
 gs4 = GS4(rhoMax,rhoMin,rhoEss,dt,1);
