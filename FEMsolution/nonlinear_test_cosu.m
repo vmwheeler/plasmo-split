@@ -1,8 +1,8 @@
 clear all;
 %close all;
 clc;
-%pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
-pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
+pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+%pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
 addpath(strcat(pathtogs4,'/Base'));
 addpath(strcat(pathtogs4,'/Elements'));
 addpath(strcat(pathtogs4,'/ForceTerms/'));
@@ -13,7 +13,7 @@ addpath('./NLTools')
 numEle = 30;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
-tEnd = 0.1;
+tEnd = 0.3;
 numSteps = 10;
 dt=tEnd/numSteps;
 
@@ -65,7 +65,7 @@ sysEQ.dynamic_force = true;
 %% set BCs
 BC1 = BoundaryCondition(1,2,1,0,0.0,0.0);
 sysEQ.addBC(BC1);
-BC2 = BoundaryCondition(2,3,numNodes,0,1.0,1.0);
+BC2 = BoundaryCondition(2,3,numNodes,0,1.0,0.0);
 sysEQ.addBC(BC2);
 
 

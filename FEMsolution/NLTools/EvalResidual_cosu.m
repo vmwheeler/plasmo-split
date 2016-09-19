@@ -48,8 +48,8 @@ for i = 1:sys.nEle
     elmt = sys.ele(i);
     x1 = elmt.nodes(1).loc;
     x2 = elmt.nodes(2).loc;
-    ff1 = @(x) (1-(x2-x)./elmt.dx).*x*x*cos(ynpw1_func(x));
-    ff2 = @(x) (x2-x)./elmt.dx.*x*x*cos(ynpw1_func(x));
+    ff1 = @(x) -(1-(x2-x)./elmt.dx).*x*x*cos(ynpw1_func(x));
+    ff2 = @(x) -(x2-x)./elmt.dx.*x*x*cos(ynpw1_func(x));
     elmt.force = [ integral(ff1,x1,x2,'ArrayValued', true);
         integral(ff2,x1,x2,'ArrayValued', true) ];
     
