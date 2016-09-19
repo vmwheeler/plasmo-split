@@ -1,4 +1,4 @@
-function [Res] = EvalResidual(sys,gs4,yg)
+function [Res] = EvalResidual_easy(sys,gs4,yg)
 
 ynpw1 = zeros(sys.nNodes,1);
 ydnpl6w1 = zeros(sys.nNodes,1);
@@ -30,9 +30,6 @@ for i = 1:sys.nNodes
 end
 
 % set type 2 and 3 BC values in stiffness matrices
-
-sys.updateForce(gs4.tnpw1);
-exF = sys.force;
 for i = 1:sys.nbc
     if sys.bcs(i).type == 2 || sys.bcs(i).type == 3
         [Cee,Kay,exF] = sys.bcs(i).applytype23(Cee,Kay,exF);

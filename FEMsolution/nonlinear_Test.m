@@ -10,10 +10,10 @@ addpath(strcat(pathtogs4,'/Extras'));
 addpath('./NLTools')
 
 %% Physical and numerical constants
-numEle = 10;
+numEle = 20;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
-tEnd = 50.0;
+tEnd = 0.15;
 numSteps = 20;
 dt=tEnd/numSteps;
 
@@ -54,7 +54,7 @@ yg(end) = 1;
 
 %% Create elements from mesh
 % set the force term 
-fhandle = @(x,t) 100 * sin(x);
+fhandle = @(x,t) -100 * sin(x);
 
 % assign nodes to elements
 for i = 1:numEle
@@ -76,16 +76,12 @@ sysEQ.addBC(BC2);
 
 J = EvalJacobian(sysEQ,gs4);
 
-delt = gs4.dt;
 
 %% Solve!
 sysEQ.ready()
 for n = 1:numSteps
     %manually crank gs4 forward
-    gs4.tn = delt*gs4.n;
-    gs4.n = gs4.n + 1;
-    gs4.tnp1 = delt*(gs4.n);
-    gs4.tnpw1 = gs4.tn + gs4.w1*(gs4.tnp1-gs4.tn);
+    gs4.tick()
     disp('Here we go')
     eps = 299999; %reset norm of residual
     ct = 1;
