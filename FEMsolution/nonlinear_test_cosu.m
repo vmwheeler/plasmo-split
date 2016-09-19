@@ -13,14 +13,14 @@ addpath('./NLTools')
 numEle = 10;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
-tEnd = 3.0;
-numSteps = 20;
+tEnd = 0.5;
+numSteps = 10;
 dt=tEnd/numSteps;
 
 gs4 = GS4(rhoMax,rhoMin,rhoEss,dt,1);
 
 %nonlinear tolerance
-tol = 10e-8;
+tol = 10e-6;
 
 
 %% Initialize vectors
@@ -46,11 +46,6 @@ for i = 1:numNodes
     nodes(i) = Node(i,nodeLocs(i),iv,0);
 end
 
-%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%careful with this ic... only appropriate for dirichlet condition
-nodes(end).y = 1;
-yg(end) = 1;
-
 
 %% Create elements from mesh
 % set the force term 
@@ -68,9 +63,9 @@ sysEQ = SystemEQ(nodes,ele);
 sysEQ.dynamic_force = true;
 
 %% set BCs
-BC1 = BoundaryCondition(1,1,1,0,0.0,0.0);
+BC1 = BoundaryCondition(1,2,1,0,0.0,0.0);
 sysEQ.addBC(BC1);
-BC2 = BoundaryCondition(2,1,numNodes,0,0,1.0);
+BC2 = BoundaryCondition(2,3,numNodes,0,1.0,1.0);
 sysEQ.addBC(BC2);
 
 
@@ -82,24 +77,24 @@ sysEQ.ready()
 for n = 1:numSteps
     %manually crank gs4 forward
     gs4.tick()
-    disp('Here we go')
     eps = 299999; %reset norm of residual
     ct = 1;
     while eps > tol
-        res = EvalResidual_easy(sysEQ,gs4,yg);
+        res = EvalResidual_cosu(sysEQ,gs4,yg);
         eps = norm(res);
-        fprintf('************\n')
-        fprintf('iteration # %f\n', ct)
+        fprintf('************************\n')
+        fprintf('iteration # %i\n', ct)
         fprintf('norm of residual = %f\n', eps)
         fprintf('************************\n')
         delta = - J \ res;
         yg = yg + delta;
         ct = ct + 1;
-        if ct > 10
+        if ct > 50
             fprintf('******\n iteration max met\n******\n')
             break
         end
     end
+    fprintf('\n^^^^^^^^^^^^^^^^^^^^^^^^^\n')
     for i = 1:sysEQ.nNodes
         dely = yg(i)-sysEQ.nodes(i).y;
         sysEQ.nodes(i).y = yg(i);

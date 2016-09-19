@@ -38,8 +38,6 @@ end
 
 Res = Cee*ydnpl6w1 + Kay*ynpw1 + exF;
 
-exF
-
 for i = 1:sys.nbc
     if sys.bcs(i).type == 1
         Res(sys.bcs(i).where) = 0;
