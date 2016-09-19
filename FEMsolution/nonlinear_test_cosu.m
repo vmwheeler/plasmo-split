@@ -1,8 +1,8 @@
 clear all;
 %close all;
 clc;
-pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
-%pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
+%pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
 addpath(strcat(pathtogs4,'/Base'));
 addpath(strcat(pathtogs4,'/Elements'));
 addpath(strcat(pathtogs4,'/ForceTerms/'));
@@ -10,10 +10,10 @@ addpath(strcat(pathtogs4,'/Extras'));
 addpath('./NLTools')
 
 %% Physical and numerical constants
-numEle = 10;
+numEle = 30;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
-tEnd = 0.5;
+tEnd = 0.1;
 numSteps = 10;
 dt=tEnd/numSteps;
 
@@ -69,9 +69,6 @@ BC2 = BoundaryCondition(2,3,numNodes,0,1.0,1.0);
 sysEQ.addBC(BC2);
 
 
-J = EvalJacobian(sysEQ,gs4);
-
-
 %% Solve!
 sysEQ.ready()
 for n = 1:numSteps
@@ -81,6 +78,7 @@ for n = 1:numSteps
     ct = 1;
     while eps > tol
         res = EvalResidual_cosu(sysEQ,gs4,yg);
+        J = EvalJacobian_cosu(sysEQ,gs4,yg);
         eps = norm(res);
         fprintf('************************\n')
         fprintf('iteration # %i\n', ct)
@@ -89,7 +87,7 @@ for n = 1:numSteps
         delta = - J \ res;
         yg = yg + delta;
         ct = ct + 1;
-        if ct > 50
+        if ct > 200
             fprintf('******\n iteration max met\n******\n')
             break
         end

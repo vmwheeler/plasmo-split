@@ -1,8 +1,8 @@
 clear all;
 %close all;
 clc;
-pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
-%pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
+%pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
 addpath(strcat(pathtogs4,'/Base'));
 addpath(strcat(pathtogs4,'/Elements'));
 addpath(strcat(pathtogs4,'/ForceTerms/'));
