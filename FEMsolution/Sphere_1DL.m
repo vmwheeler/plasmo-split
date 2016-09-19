@@ -35,8 +35,8 @@ classdef Sphere_1DL < handle
             r2 = obj.nodes(2).loc;
                  
             %1/r^2 d/dr [ r^2 k dT/dr ]
-            KGd11 = (r1^2+r1*r2+r2^2)/(3*r1-3*r2);
-            KGd12 = -(r1^2+r1*r2+r2^2)/(3*r1-3*r2);
+            KGd11 = -(r1^2+r1*r2+r2^2)/(3*r1-3*r2);
+            KGd12 = (r1^2+r1*r2+r2^2)/(3*r1-3*r2);
             KGd21 = KGd12;
             KGd22 = KGd11; 
             
@@ -46,7 +46,7 @@ classdef Sphere_1DL < handle
             C11 = -((r1-r2)*(6*r1^2 + 3*r1*r2 + r2^2))/30.;
             C12 = -((r1-r2)*(3*r1^2 + 4*r1*r2 + 3*r2^2))/60.;
             C21 = C12;
-            C22 = C11;
+            C22 = -((r1-r2)*(r1^2 + 3*r1*r2 + 6*r2^2))/30.;
                                  
             obj.eleC = obj.const(2) * [ C11 C12 ; ...
                                         C21 C22 ];
