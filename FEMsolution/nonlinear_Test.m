@@ -1,8 +1,8 @@
 clear all;
-close all;
+%close all;
 clc;
-%pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
-pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
+pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+%pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
 addpath(strcat(pathtogs4,'/Base'));
 addpath(strcat(pathtogs4,'/Elements'));
 addpath(strcat(pathtogs4,'/ForceTerms/'));
@@ -10,14 +10,18 @@ addpath(strcat(pathtogs4,'/Extras'));
 addpath('./NLTools')
 
 %% Physical and numerical constants
-numEle = 20;
+numEle = 10;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
 tEnd = 50.0;
-numSteps = 10;
+numSteps = 20;
 dt=tEnd/numSteps;
 
 gs4 = GS4(rhoMax,rhoMin,rhoEss,dt,1);
+
+%nonlinear tolerance
+tol = 10e-8;
+
 
 %% Initialize vectors
 problemIC = zeros(numNodes,1);
@@ -34,10 +38,19 @@ fluxBD = zeros(numNodes-1,1);
 nodeLocs = linspace(0,1,numNodes);
 
 % initialize (set ICs) and number nodes
+% also set guess for first timestep
+yg = zeros(numNodes,1);
 for i = 1:numNodes
     iv = problemIC(i);
+    yg(i) = iv;
     nodes(i) = Node(i,nodeLocs(i),iv,0);
 end
+
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%careful with this ic... only appropriate for dirichlet condition
+nodes(end).y = 1;
+yg(end) = 1;
+
 
 %% Create elements from mesh
 % set the force term 
@@ -61,42 +74,63 @@ BC2 = BoundaryCondition(2,1,numNodes,0,0,1.0);
 sysEQ.addBC(BC2);
 
 
+J = EvalJacobian(sysEQ,gs4);
+
+delt = gs4.dt;
 
 %% Solve!
 sysEQ.ready()
 for n = 1:numSteps
-    fprintf('**********\nTimestep #%i\n**********\n',n)
-    gs4.time_march(sysEQ);
+    %manually crank gs4 forward
+    gs4.tn = delt*gs4.n;
+    gs4.n = gs4.n + 1;
+    gs4.tnp1 = delt*(gs4.n);
+    gs4.tnpw1 = gs4.tn + gs4.w1*(gs4.tnp1-gs4.tn);
+    disp('Here we go')
+    eps = 299999; %reset norm of residual
+    ct = 1;
+    while eps > tol
+        res = EvalResidual_easy(sysEQ,gs4,yg);
+        eps = norm(res);
+        fprintf('************\n')
+        fprintf('iteration # %f\n', ct)
+        fprintf('norm of residual = %f\n', eps)
+        fprintf('************************\n')
+        delta = - J \ res;
+        yg = yg + delta;
+        ct = ct + 1;
+        if ct > 10
+            fprintf('******\n iteration max met\n******\n')
+            break
+        end
+    end
+    for i = 1:sysEQ.nNodes
+        dely = yg(i)-sysEQ.nodes(i).y;
+        sysEQ.nodes(i).y = yg(i);
+        sysEQ.nodes(i).yd = (1-1/gs4.lam5)*sysEQ.nodes(i).yd + 1/gs4.lam5/gs4.dt*dely;
+    end
 end
-
-ydfin=zeros(numNodes,1)
-for i = 1:numNodes
-    ydfin(i) = sysEQ.nodes(i).yd;
-end
-EvalResidual(sysEQ,gs4,ydfin);
 
 
 %% Post-process
 
-for j = 1:numNodes
-    sol(j) = sysEQ.nodes(j).y;
-end
+sol = yg
 
-sysEQ.computeDirs()
-for i = 1:numEle
-    xFlux(i) = (sysEQ.ele(i).nodes(2).loc + sysEQ.ele(i).nodes(1).loc)/2;
-    flux(i) = sysEQ.ele(i).yp;
-end
+%sysEQ.computeDirs()
+%for i = 1:numEle
+%    xFlux(i) = (sysEQ.ele(i).nodes(2).loc + sysEQ.ele(i).nodes(1).loc)/2;
+%    flux(i) = sysEQ.ele(i).yp;
+%end
 
-hT = figure(3);
+hT = figure();
 plot(xPlot,sol)
 set(gca,'fontsize',8)
 ylabel('dimensionless temperature')
 xlabel('dimensionless distance')
 
     
-hQ = figure(2);
-plot(xFlux,flux)
-set(gca,'fontsize',8)
-ylabel('dimensionless flux')
-xlabel('dimensionless distance')
+%hQ = figure();
+%plot(xFlux,flux)
+%set(gca,'fontsize',8)
+%ylabel('dimensionless flux')
+%xlabel('dimensionless distance')

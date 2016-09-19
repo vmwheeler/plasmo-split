@@ -1,16 +1,20 @@
 clear all;
+%close all;
 clc;
-addpath('/home/vmwheeler/Code/chapterxx_r/code/Base');
-addpath('/home/vmwheeler/Code/chapterxx_r/code/Elements');
-addpath('/home/vmwheeler/Code/chapterxx_r/code/ForceTerms/');
-addpath('/home/vmwheeler/Code/chapterxx_r/code/Extras');
+pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+%pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
+addpath(strcat(pathtogs4,'/Base'));
+addpath(strcat(pathtogs4,'/Elements'));
+addpath(strcat(pathtogs4,'/ForceTerms/'));
+addpath(strcat(pathtogs4,'/Extras'));
+addpath('./NLTools')
 
 %% Physical and numerical constants
 numEle = 10;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
 tEnd = 50.0;
-numSteps = 10;
+numSteps = 20;
 dt=tEnd/numSteps;
 
 gs4 = GS4(rhoMax,rhoMin,rhoEss,dt,1);
@@ -35,6 +39,11 @@ for i = 1:numNodes
     nodes(i) = Node(i,nodeLocs(i),iv,0);
 end
 
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%careful with this ic... only appropriate for dirichlet condition
+nodes(end).y = 1;
+%yg(end) = 1;
+
 %% Create elements from mesh
 % set the force term 
 fhandle = @(x,t) 100 * sin(x);
@@ -57,11 +66,6 @@ BC2 = BoundaryCondition(2,1,numNodes,0,0,1.0);
 sysEQ.addBC(BC2);
 
 
-sysEQ.bigK
-sysEQ.bigC
-sysEQ.bigM
-
-
 
 %% Solve!
 sysEQ.ready()
@@ -78,20 +82,24 @@ for j = 1:numNodes
     sol(j) = sysEQ.nodes(j).y;
 end
 
+sysEQ.bigC
+sysEQ.bigK
+sol
+
 sysEQ.computeDirs()
 for i = 1:numEle
     xFlux(i) = (sysEQ.ele(i).nodes(2).loc + sysEQ.ele(i).nodes(1).loc)/2;
     flux(i) = sysEQ.ele(i).yp;
 end
 
-hT = figure(3);
+hT = figure();
 plot(xPlot,sol)
 set(gca,'fontsize',8)
 ylabel('dimensionless temperature')
 xlabel('dimensionless distance')
 
     
-hQ = figure(2);
+hQ = figure();
 plot(xFlux,flux)
 set(gca,'fontsize',8)
 ylabel('dimensionless flux')
