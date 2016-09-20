@@ -27,21 +27,27 @@ gs4 = GS4(rhoMax,rhoMin,rhoEss,dt,1);
 tol = 10e-6;
 
 %import the necessary data...
-pathtoabsdata = '../bhfield/dataout/';
-disp(strcat(pathtoabsdata,num2str(crad),'-',num2str(srad),'_','UabsVr.dat'))
-uabsfname = strcat(pathtoabsdata,num2str(crad),'-',num2str(srad),'_','UabsVr.dat');
+pathtoinputdata = '../bhfield/dataout/';
 
-% power absorbed vs r
-formatSpec = '%f%f%*s%*s%[^\n\r]';
-fileID = fopen(uabsfname,'r');
-testinput = textscan(fileID, formatSpec,'Delimiter',' ','MultipleDelimsAsOne',true,'HeaderLines',3, 'ReturnOnError', false);
-fclose(fileID);
-rads_raw = testinput{1};
-pabss_raw = testinput{2};
+% get absorbed power and radii
+uabsfname = strcat(pathtoinputdata,num2str(crad),'-',num2str(srad),'_','UabsVr.dat');
+uabsdataraw = importdata(uabsfname,' ',3);
+rads = uabsdataraw.data(:,1);
+pabs = uabsdataraw.data(:,2);
 
-uemtfname = strcat(pathtoabsdata,num2str(crad),'-',num2str(srad),'_','UemVr.dat');
-newtry = importdata(uemtfname,' ',4)
-newtry
+% get emitted power
+uemfname = strcat(pathtoinputdata,num2str(crad),'-',num2str(srad),'_','UemVr.dat');
+uemdataraw = importdata(uemfname,' ',4);
+pem = uemdataraw.data(:,2:end);
+% get temperatures
+testtemp = strsplit(uemdataraw.textdata{3});
+temps = cellfun(@str2num,testtemp(2:end));
+
+% get emitted power dT
+uemdTfname = strcat(pathtoinputdata,num2str(crad),'-',num2str(srad),'_','UemdTVr.dat');
+uemdTdataraw = importdata(uemdTfname,' ',4);
+pemdT = uemdTdataraw.data(:,2:end);
+
 moop
 
 %% Initialize vectors
