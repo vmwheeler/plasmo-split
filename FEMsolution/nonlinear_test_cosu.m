@@ -13,7 +13,7 @@ addpath('./NLTools')
 numEle = 30;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
-tEnd = 0.3;
+tEnd = 3.0;
 numSteps = 10;
 dt=tEnd/numSteps;
 
@@ -24,7 +24,7 @@ tol = 10e-6;
 
 
 %% Initialize vectors
-problemIC = zeros(numNodes,1);
+
 xPlot = linspace(0,1,numNodes);
 sol = zeros(numNodes,1);
 xFlux = zeros(numNodes-1,1);
@@ -39,7 +39,8 @@ nodeLocs = linspace(0,1,numNodes);
 
 % initialize (set ICs) and number nodes
 % also set guess for first timestep
-yg = zeros(numNodes,1);
+problemIC = ones(numNodes,1);
+yg = problemIC;
 for i = 1:numNodes
     iv = problemIC(i);
     yg(i) = iv;
@@ -65,8 +66,11 @@ sysEQ.dynamic_force = true;
 %% set BCs
 BC1 = BoundaryCondition(1,2,1,0,0.0,0.0);
 sysEQ.addBC(BC1);
-BC2 = BoundaryCondition(2,3,numNodes,0,1.0,0.0);
+BC2 = BoundaryCondition(2,3,numNodes,0,1.0,1.0);
 sysEQ.addBC(BC2);
+
+J = EvalJacobian_cosu(sysEQ,gs4,yg);
+%J = EvalJacobian(sysEQ,gs4);
 
 
 %% Solve!
@@ -75,10 +79,11 @@ for n = 1:numSteps
     %manually crank gs4 forward
     gs4.tick()
     eps = 299999; %reset norm of residual
+    %J = EvalJacobian_cosu(sysEQ,gs4,yg);
     ct = 1;
     while eps > tol
         res = EvalResidual_cosu(sysEQ,gs4,yg);
-        J = EvalJacobian_cosu(sysEQ,gs4,yg);
+        %J = EvalJacobian_cosu(sysEQ,gs4,yg);
         eps = norm(res);
         fprintf('************************\n')
         fprintf('iteration # %i\n', ct)
