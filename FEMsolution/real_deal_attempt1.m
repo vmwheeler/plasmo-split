@@ -40,7 +40,7 @@ rads_raw = testinput{1};
 pabss_raw = testinput{2};
 
 uemtfname = strcat(pathtoabsdata,num2str(crad),'-',num2str(srad),'_','UemVr.dat');
-newtry = importdata(uemtfname,' ',5)
+newtry = importdata(uemtfname,' ',4)
 newtry
 moop
 
