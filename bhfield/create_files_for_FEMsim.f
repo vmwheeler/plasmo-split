@@ -112,8 +112,8 @@ C      rad = 0.025
 C      userdata_s(6) = rad !set in subroutine
       npar_s = 7
       print *, "starting the business"
-      nshells = 21
-      ntemps = 20
+      nshells = 50
+      ntemps = 50
       CALL IntegrateShellsFull(userdata_s,npar_s,nshells,ntemps)
 
    
@@ -135,10 +135,15 @@ C **********************************************************************
       real*8 userdata(npar)
       real*8 rads(nshells),uabs(nshells),temps(ntemps)
       real*8 uem(nshells,ntemps),uemdt(nshells,ntemps)
-      real*8 radcot,rstep,t,delt,tlow,thigh
+      real*8 radcor,radcot,rstep,t,delt,tlow,thigh
+      
+      character(3) crad, srad
+      character(5) csrad
+      
       external diffShellIsolPabs,diffShellIbbPabs
       external diffShellIbbdTPabs
       
+      radcor = userdata(1)
       radcot = userdata(2)
       rstep = radcot/dble(nshells-1)
       
@@ -175,13 +180,22 @@ C **********************************************************************
 
   701 FORMAT(3E13.5,E13.5)
   702 FORMAT(3E13.5)
+  
+C     make some file names according to particle size
+      write(crad,'(I2.0)') NINT(radcor*1.E3)
+      write(srad,'(I2.0)') NINT(radcot*1.E3)
+      csrad = trim(crad)//'-'//trim(srad)
+      print *, '=================================== '
+      print *, csrad
+      print *, '=================================== '
+  
       
-      OPEN(44,FILE='UabsVr.dat',STATUS='UNKNOWN')
+      OPEN(44,FILE=csrad//'_'//'UabsVr.dat',STATUS='UNKNOWN')
       WRITE(44,*) 'Absorption per volume'
       WRITE(44,*) '  units [=] (W m^-3)'
       WRITE(44,*) '-----------'
 C      
-      OPEN(45,FILE='UemVr.dat',STATUS='UNKNOWN')
+      OPEN(45,FILE=csrad//'_'//'UemVr.dat',STATUS='UNKNOWN')
       WRITE(45,*) 'Emission per volume'
       WRITE(45,*) '  units [=] (W m^-3)'
       WRITE(45,'(A13)',advance='no') 'temperatures:'
@@ -191,7 +205,7 @@ C
       WRITE(45,*)
       WRITE(45,*) '-----------'
 C      
-      OPEN(46,FILE='UemdTVr.dat',STATUS='UNKNOWN')
+      OPEN(46,FILE=csrad//'_'//'UemdTVr.dat',STATUS='UNKNOWN')
       WRITE(46,*) 'Emission per volume'
       WRITE(46,*) '  units [=] (W m^-3)'
       WRITE(46,'(A13)',advance='no') 'temperatures:'
