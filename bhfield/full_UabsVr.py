@@ -3,17 +3,17 @@ import numpy as np
 from scipy.integrate import simps
 import matplotlib.pyplot as plt
 
-absdata = np.loadtxt("./UabsVr.dat",skiprows=3)
+absdata = np.loadtxt("./dataout/30-60_UabsVr.dat",skiprows=3)
 
 #check that this integrates to proper absorption cross section
 rads = absdata[:,0] # in meters
 Uabss = absdata[:,1]
 
 chosenTindex = 10
-emdata = np.loadtxt("./UemVr.dat",skiprows=4)
+emdata = np.loadtxt("./dataout/30-60_UemVr.dat",skiprows=4)
 Uems = emdata[:,chosenTindex]
 
-f = open("./UemVr.dat")
+f = open("./dataout/30-60_UemVr.dat")
 tline = f.readlines()[2]
 tline = tline.split()[1:]
 temp = float(tline[chosenTindex])
@@ -31,6 +31,8 @@ for rad,Uabs in zip(rads,Uabss):
 
 
 UABS_T = simps(Uabssr2,rads)
+print "Cabs = " + str(UABS_T)
+
 AP = np.pi*RADCOT*RADCOT
 MYQABS = UABS_T/AP
 

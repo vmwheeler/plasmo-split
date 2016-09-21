@@ -31,6 +31,6 @@ for i = 1:sys.nbc
     end
 end
 
-J
+%J
 
 end
