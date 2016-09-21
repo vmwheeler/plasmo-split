@@ -83,7 +83,7 @@ for rshell in rshells:
     newmax = np.max(qabss)
     if newmax > qabsmax:
         qabsmax = newmax
-    qabsint = simps(qabss,lams)
+    qabsint = simps(qabss,lams)*1.E6
     print "integral over Qabs for rshell = " + str(rshell) + " = " + str(qabsint) 
     datout.append(qabss)
     filehead += "Qabs--" + str(rshell) + "nm[1] "
