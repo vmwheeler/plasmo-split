@@ -90,7 +90,8 @@ for rshell in rshells:
     plt.plot(lams*1E9,qabss, label="t="+str(round((rshell-rcore)*1E9,1))+'nm')
 
 
-rshell = max(rshells)
+#rshell = max(rshells)
+rshell = 45.E-9
 
 cabss = []
 qabss = []
@@ -102,6 +103,8 @@ for lam in lams:
 	[qext, qsca, qback, gsca] = bhcoat_pyed.bhcoat(xcore,xshell,rrefshell,rrefshell)
 	cabss.append((qext-qsca)*np.pi*rshell**2.)
 	qabss.append(qext-qsca)
+qabsint = simps(qabss,lams)*1.E6
+print "integral over Qabs for ceria only rad = " + str(rshell) + " = " + str(qabsint)
 plt.plot(lams*1E9,qabss,linestyle=':',color='black', label='ceria only')
 
 
