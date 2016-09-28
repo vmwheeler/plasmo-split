@@ -263,7 +263,7 @@ C      userdata_s(6) = rad
       npar_s = 6
       print *, "starting the business"
       nshells = 50
-      CALL IntegrateShellsFull(userdata_s,npar_s,nshells)
+C      CALL IntegrateShellsFull(userdata_s,npar_s,nshells)
 
    
       

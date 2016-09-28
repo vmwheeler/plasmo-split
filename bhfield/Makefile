@@ -17,8 +17,8 @@ DEFINES = -DNMAX_COEFFS=700 -DCHECK_SURFACE_MODE -DDATA_DIR="'/home/vmwheeler/Co
 #DBOPT = -DCHECK_UNDERFLOW -DCHECK_TANGENTIAL_CONTINUITY -DDEBUG_BESSEL -fbounds-check 
 #-DWRITE_LOG
 
-MAIN = create_files_for_FEMsim
-#MAIN = full_spectrum
+#MAIN = create_files_for_FEMsim
+MAIN = full_spectrum
 #MAIN = spectral_shells
 
 # clear up the default gnu make
