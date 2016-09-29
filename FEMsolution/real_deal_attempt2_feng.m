@@ -1,8 +1,8 @@
 clear all;
 close all;
 clc;
-%pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
-pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
+pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+%pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
 addpath(strcat(pathtogs4,'/Base'));
 addpath(strcat(pathtogs4,'/Elements'));
 addpath(strcat(pathtogs4,'/ForceTerms/'));
@@ -10,22 +10,14 @@ addpath(strcat(pathtogs4,'/Extras'));
 addpath('./NLTools')
 
 %% Physical and numerical constants
-numEle = 50;
+numEle = 20;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
-<<<<<<< HEAD
 tEnd = 100.0;
 numSteps = 10;
 % pick a tstar to nondimensionalize time and make fix numerical issues
 % due to really really small numbers
-tstar = 1.E-5;
-=======
-tEnd = 2.0;
-numSteps = 20;
-% pick a tstar to nondimensionalize time and make fix numerical issues
-% due to really really small numbers
-tstar = 1.E-6;
->>>>>>> b8a4e0aacd6ac52093bd3980177d5174b2eca92d
+tstar = 1.E-7;
 dt = tEnd/numSteps;
 
 % radii in nanometers
@@ -35,11 +27,7 @@ srad = 60.;
 srad_nm = srad*1.E-9;
 
 % Concentration ratio
-<<<<<<< HEAD
-CR = 300;
-=======
-CR = 10;
->>>>>>> b8a4e0aacd6ac52093bd3980177d5174b2eca92d
+CR = 50;
 
 % Ceria stuff
 % thermal conductivity in W/mK taken as low estimate from Khafisov.  Note
@@ -68,17 +56,9 @@ k_Au = 317.; %W per m per K
 
 rhocp_Au = rho_Au*cp_Au;
 
-% the average Nusselt number for a spherical particle
-% as Re goes to zero, this thing goes to two (see Incropera Dewitt)
-% Could be more like 0.5 according to Feng when the Knudsen number is
-% near one as it would be here
-Nu=0.5;
-% fluid thermal conductivity (Argon from wikipedia)
-kf = 17.72*1.E-3; % W per m per K (room temp?)
-Dia = 2*srad_nm;
-h = Nu*kf/Dia
-h=500
-%h=1000
+% lets use the result from Feng instead of a traditional Nusselt number
+% correlation.
+lambda = 22.;
 %h=0
 
 %ambient fluid temp
@@ -119,7 +99,7 @@ pemdT_func = griddedInterpolant(rr,tt,pemdT);
 pabs_func = griddedInterpolant(rads,pabs);
 %pnet_func = @(r,t) pabs_func(r) - pem_func(r,t);
 
-%%{
+%{
 % cute picture of the emission vs radius and temperature to verify
 % interpolation function
 [xx,yy] = meshgrid(temps,rads);
