@@ -1,8 +1,8 @@
 clear all;
 close all;
 clc;
-pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
-%pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
+%pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
 addpath(strcat(pathtogs4,'/Base'));
 addpath(strcat(pathtogs4,'/Elements'));
 addpath(strcat(pathtogs4,'/ForceTerms/'));
@@ -27,7 +27,9 @@ srad = 60.;
 srad_nm = srad*1.E-9;
 
 % Concentration ratio
+
 CR = 100;
+
 
 % Ceria stuff
 % thermal conductivity in W/mK taken as low estimate from Khafisov.  Note
@@ -65,6 +67,7 @@ Nu=0.5;
 kf = 17.72*1.E-3; % W per m per K (room temp?)
 Dia = 2*srad_nm;
 h = Nu*kf/Dia
+h=500
 %h=1000
 %h=0
 

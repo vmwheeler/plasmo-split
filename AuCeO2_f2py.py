@@ -64,8 +64,8 @@ plt.plot(lams*1E9,planck(lams,temp)/np.max(solI(lams)),'--r')
 qabsmax = 0
 
 datout = []
-filehead = "wavelength[m] "
-datout.append(np.transpose(lams))
+filehead = "wavelength[nm] "
+datout.append(np.transpose(lams*1.E9))
 
 for rshell in rshells:
     cabss = []
@@ -86,7 +86,7 @@ for rshell in rshells:
     qabsint = simps(qabss,lams)*1.E6
     print "integral over Qabs for rshell = " + str(rshell) + " = " + str(qabsint) 
     datout.append(qabss)
-    filehead += "Qabs--" + str(rshell) + "nm[1] "
+    filehead += "Qabs--" + str(round((rshell-rcore)*1.E9)) + "nm[1] "
     plt.plot(lams*1E9,qabss, label="t="+str(round((rshell-rcore)*1E9,1))+'nm')
 
 
@@ -103,8 +103,12 @@ for lam in lams:
 	[qext, qsca, qback, gsca] = bhcoat_pyed.bhcoat(xcore,xshell,rrefshell,rrefshell)
 	cabss.append((qext-qsca)*np.pi*rshell**2.)
 	qabss.append(qext-qsca)
+
+datout.append(qabss)
+filehead += "Qabs--" + "CeO2 "
 qabsint = simps(qabss,lams)*1.E6
 print "integral over Qabs for ceria only rad = " + str(rshell) + " = " + str(qabsint)
+
 plt.plot(lams*1E9,qabss,linestyle=':',color='black', label='ceria only')
 
 
@@ -120,7 +124,7 @@ plt.show()
 
 datout.append(solI(lams))
 datout.append(planck(lams,temp))
-filehead += "Solar Intensity[W/m^2/sr] " + "BB intensity@" + str(temp)+"K[W/m^2/sr]"
+filehead += "Solar Irradiance[W/m^2/nm] " + "BB intensity@" + str(temp)+"K[W/m^2/nm]"
 
 datout = np.array(datout)
 np.savetxt('forLance.dat',np.transpose(datout),delimiter=' ',header=filehead)
