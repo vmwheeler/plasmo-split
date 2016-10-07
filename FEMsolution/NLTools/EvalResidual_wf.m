@@ -1,4 +1,4 @@
-function [Res] = EvalResidual_nls(sys,gs4,yg,rad,CR,pabs,pem)
+function [Res] = EvalResidual_nls(sys,gs4,yg,rads,CR,pabs,pem)
 
 % residual evaluation when only the source term is nonlinear
 % i.e. cp and k are considered constant
@@ -6,6 +6,8 @@ function [Res] = EvalResidual_nls(sys,gs4,yg,rad,CR,pabs,pem)
 Cee = sys.bigC;
 Kay = sys.bigK;
 
+rs = rads(1);
+rf = rads(2);
 
 
 fprintf('tn = %f\n', gs4.tn)
@@ -42,7 +44,7 @@ end
 
 %do a linear inpterpolation of ynpw1 to get a function that can be
 % integrated
-locs = linspace(0,rad,sys.nNodes);
+locs = linspace(0,rf,sys.nNodes);
 ynpw1_func = griddedInterpolant(locs,ynpw1);
 
 %{
@@ -66,10 +68,16 @@ for i = 1:sys.nEle
     elmt = sys.ele(i);
     x1 = elmt.nodes(1).loc;
     x2 = elmt.nodes(2).loc;
-    ff1 = @(x) -(1-(x2-x)./elmt.dx).*x*x*(CR*pabs(x) - pem(x,ynpw1_func(x)));
-    ff2 = @(x) -(x2-x)./elmt.dx.*x*x*(CR*pabs(x) - pem(x,ynpw1_func(x)));
-    elmt.force = [ integral(ff1,x1,x2,'ArrayValued', true);
-        integral(ff2,x1,x2,'ArrayValued', true) ];
+    if x2 <= rs
+        ff1 = @(x) -(1-(x2-x)./elmt.dx).*x*x*(CR*pabs(x) - pem(x,ynpw1_func(x)));
+        ff2 = @(x) -(x2-x)./elmt.dx.*x*x*(CR*pabs(x) - pem(x,ynpw1_func(x)));
+        elmt.force = [ integral(ff1,x1,x2,'ArrayValued', true);
+            integral(ff2,x1,x2,'ArrayValued', true) ];
+    elseif x2 > rs
+        emt.force = [0,0];
+    else
+        moop
+    end
     
     %get node numbers for element to be assembled
     nn = zeros(elmt.nnpe,1);
@@ -83,7 +91,7 @@ for i = 1:sys.nEle
     end
 end
 
-exF = sys.force
+exF = sys.force;
 
 
 

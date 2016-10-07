@@ -10,14 +10,14 @@ addpath(strcat(pathtogs4,'/Extras'));
 addpath('./NLTools')
 
 %% Physical and numerical constants
-numEle = 50;
+numEle = 500;
 numNodes = numEle+1;
 rhoMax = 1.; rhoMin = 0.0; rhoEss = 0.0;
 tEnd = 2.0;
 numSteps = 20;
 % pick a tstar to nondimensionalize time and make fix numerical issues
 % due to really really small numbers
-tstar = 1.E-6;
+tstar = 1.E-3;
 dt = tEnd/numSteps;
 
 % radii in nanometers
@@ -25,6 +25,8 @@ crad = 30.;
 crad_nm = crad*1.E-9;
 srad = 60.;
 srad_nm = srad*1.E-9;
+frad = 5000.;
+frad_nm = frad*1.E-9;
 
 % Concentration ratio
 CR = 100;
@@ -51,22 +53,17 @@ rhocp_CeO2 = rho_CeO2/M_CeO2*cp_CeO2;
 
 % Gold stuff... all taken from Incropera and Dewitt pg900 table A.1
 rho_Au = 19300; %kg per cubic m
-cp_Au = 129.; %K per kg per K
+cp_Au = 129.; %J per kg per K
 k_Au = 317.; %W per m per K
 
 rhocp_Au = rho_Au*cp_Au;
 
-% the average Nusselt number for a spherical particle
-% as Re goes to zero, this thing goes to two (see Incropera Dewitt)
-% Could be more like 0.5 according to Feng when the Knudsen number is
-% near one as it would be here
-Nu=0.5;
-% fluid thermal conductivity (Argon from wikipedia)
-kf = 17.72*1.E-3; % W per m per K (room temp?)
-Dia = 2*srad_nm;
-h = Nu*kf/Dia
-%h=1000
-%h=0
+% Argon stuff... took air properties at 300K from Incropera for now
+rho_Ar = 1.2; %grabbed at 300K.  This should drop dramatically.
+cp_Ar = 1.0E3; %
+k_Ar = 17.72*1.E-6;
+
+rhocp_Ar = rho_Ar*cp_Ar;
 
 %ambient fluid temp
 %note that this should be consistent with the temp kf was chosen at
@@ -103,10 +100,12 @@ pemdT = uemdTdataraw.data(:,2:end);
 [rr,tt] = ndgrid(rads,temps);
 pem_func = griddedInterpolant(rr,tt,pem);
 pemdT_func = griddedInterpolant(rr,tt,pemdT);
-pabs_func = griddedInterpolant(rads,pabs);
+pabs_func = griddedInterpolant(rads,pabs,'linear','linear');
+pabs_func
+
 %pnet_func = @(r,t) pabs_func(r) - pem_func(r,t);
 
-%%{
+%{
 % cute picture of the emission vs radius and temperature to verify
 % interpolation function
 [xx,yy] = meshgrid(temps,rads);
@@ -114,9 +113,12 @@ figure()
 surface(xx,yy,pem)
 %surface(xx,yy,pem_func(xx,yy))
 
+rt = linspace(0,frad_nm,100);
+pabs_func(rt)
 % absorption too
 figure()
-plot(rads,pabs)
+plot(rt,pabs_func(rt))
+moop
 %CHECK
 %}
 
@@ -133,7 +135,8 @@ fluxBD = zeros(numNodes-1,1);
 %% Import (or create) mesh data
 
 % generate nodal locations
-nodeLocs = linspace(0,srad_nm,numNodes);
+%nodeLocs = linspace(0,srad_nm,numNodes);
+nodeLocs = linspace(0,frad_nm,numNodes);
 
 %{
 %check some orders of magnitude:
@@ -147,13 +150,11 @@ nodeLocs = linspace(0,srad_nm,numNodes);
 (srad_nm)^2*pabs_func(20*1E-9)
 % emission term at 1000K
 (srad_nm)^2*pem_func(20*1E-9,1000)
-% convection loss at boundary assuming particle at 1000K and fluid at 100K
-(srad_nm)^2*h*(1000-300)
 %}
 
 % initialize (set ICs) and number nodes
 % also set guess for first timestep
-initial_temp = 300;
+initial_temp = Tinf;
 
 problemIC = initial_temp*ones(numNodes,1);
 yg = problemIC;
@@ -171,7 +172,10 @@ fhandle = @(x,t) 0;
 % assign nodes to elements
 for i = 1:numEle
     eleNodes = [nodes(i);nodes(i+1)];
-    ele(i) = CoreShell_1DL(i,eleNodes, [crad_nm,rhocp_Au/tstar,rhocp_CeO2/tstar,k_Au,k_CeO2], fhandle);
+    ele(i) = CoreShellFluid_1DL(i,eleNodes, ...
+                    [crad_nm,srad_nm,frad_nm],...
+                    [rhocp_Au/tstar,rhocp_CeO2/tstar,rhocp_Ar/tstar],...
+                    [k_Au,k_CeO2,k_Ar], fhandle);
 end
 
 %% Set up system of equations
@@ -183,7 +187,7 @@ sysEQ.dynamic_force = true;
 %% set BCs
 BC1 = BoundaryCondition(1,2,1,0,0.0,0.0);
 sysEQ.addBC(BC1);
-BC2 = BoundaryCondition(2,3,numNodes,0, srad_nm^2*h, srad_nm^2*h * Tinf);
+BC2 = BoundaryCondition(2,1,numNodes,0.0,0.0,Tinf);
 sysEQ.addBC(BC2);
 
 %first make a really crude jacobian approximation and don't change it
@@ -205,7 +209,7 @@ for n = 1:numSteps
     eps = 299999; %reset norm of residual
     ct = 1;
     while eps > tol
-        res = EvalResidual_nls(sysEQ,gs4,yg,srad_nm,CR,pabs_func,pem_func);
+        res = EvalResidual_wf(sysEQ,gs4,yg,[srad_nm,frad_nm],CR,pabs_func,pem_func);
         eps = norm(res);
         fprintf('************************\n')
         fprintf('iteration # %i\n', ct)
@@ -255,3 +259,4 @@ set(0,'CurrentFigure',hT)
 box on
 legend(l)
  
+fprintf('total time: %f seconds \n', tEnd*tstar)
