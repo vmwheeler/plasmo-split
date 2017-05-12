@@ -17,7 +17,7 @@ tEnd = 2.0;
 numSteps = 20;
 % pick a tstar to nondimensionalize time and make fix numerical issues
 % due to really really small numbers
-tstar = 1.E-3;
+tstar = 1.E-6;
 dt = tEnd/numSteps;
 
 % radii in nanometers
@@ -29,7 +29,7 @@ frad = 5000.;
 frad_nm = frad*1.E-9;
 
 % Concentration ratio
-CR = 100;
+CR = 300;
 
 % Ceria stuff
 % thermal conductivity in W/mK taken as low estimate from Khafisov.  Note
@@ -61,7 +61,7 @@ rhocp_Au = rho_Au*cp_Au;
 % Argon stuff... took air properties at 300K from Incropera for now
 rho_Ar = 1.2; %grabbed at 300K.  This should drop dramatically.
 cp_Ar = 1.0E3; %
-k_Ar = 17.72*1.E-6;
+k_Ar = 17.72*1.E-3;
 
 rhocp_Ar = rho_Ar*cp_Ar;
 

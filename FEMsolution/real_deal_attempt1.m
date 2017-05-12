@@ -1,8 +1,8 @@
 clear all;
 close all;
 clc;
-%pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
-pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
+pathtogs4 = '/home/vmwheeler/Research/Writings/chapterxx_r/code';
+%pathtogs4 = '/home/vmwheeler/Code/chapterxx_r/code';
 addpath(strcat(pathtogs4,'/Base'));
 addpath(strcat(pathtogs4,'/Elements'));
 addpath(strcat(pathtogs4,'/ForceTerms/'));
@@ -28,7 +28,7 @@ srad_nm = srad*1.E-9;
 
 % Concentration ratio
 
-CR = 100;
+CR = 10;
 
 
 % Ceria stuff
@@ -62,12 +62,12 @@ rhocp_Au = rho_Au*cp_Au;
 % as Re goes to zero, this thing goes to two (see Incropera Dewitt)
 % Could be more like 0.5 according to Feng when the Knudsen number is
 % near one as it would be here
-Nu=0.5;
+Nu=2;
 % fluid thermal conductivity (Argon from wikipedia)
 kf = 17.72*1.E-3; % W per m per K (room temp?)
 Dia = 2*srad_nm;
-h = Nu*kf/Dia
-h=500
+h = Nu*kf/Dia;
+%h=500
 %h=1000
 %h=0
 
