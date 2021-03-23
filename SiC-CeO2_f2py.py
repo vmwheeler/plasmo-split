@@ -24,14 +24,23 @@ nCeO2Dat = np.loadtxt("./data/nDataPatsalas950.txt",delimiter=",")
 kCeO2Dat = np.loadtxt("./data/kDataPatsalas950.txt",delimiter=",")
 #nAuDat = np.genfromtxt("./data/nAuJohnson.txt",delimiter=",",skip_header = 1)
 #kAuDat = np.genfromtxt("./data/kAuJohnson.txt",delimiter=",",skip_header = 1)
-nAuDat = np.genfromtxt("./data/nAuBabar.txt",delimiter=",",skip_header = 1)
-kAuDat = np.genfromtxt("./data/kAuBabar.txt",delimiter=",",skip_header = 1)
+#nAuDat = np.genfromtxt("./data/nAuBabar.txt",delimiter=",",skip_header = 1)
+#kAuDat = np.genfromtxt("./data/kAuBabar.txt",delimiter=",",skip_header = 1)
+#nAuDat = np.genfromtxt("./data/nSiC.txt",delimiter=",",skip_header = 1)
+#kAuDat = np.genfromtxt("./data/kSiC.txt",delimiter=",",skip_header = 1)
+#nAuDat = np.genfromtxt("./data/nB4C.txt",delimiter=",",skip_header = 1)
+#kAuDat = np.genfromtxt("./data/kB4C.txt",delimiter=",",skip_header = 1)
+#nAuDat = np.genfromtxt("./data/nTiN.txt",delimiter=",",skip_header = 1)
+#kAuDat = np.genfromtxt("./data/kTiN.txt",delimiter=",",skip_header = 1)
+nAuDat = np.genfromtxt("./data/nZrN.txt",delimiter=",",skip_header = 1)
+kAuDat = np.genfromtxt("./data/kZrN.txt",delimiter=",",skip_header = 1)
+
 solarDat = np.genfromtxt("./data/ASTMG173.csv",delimiter=",",skip_header = 2)
 
-nCeO2 = interp1d(nCeO2Dat[:,0]*1E-9,nCeO2Dat[:,1])
-kCeO2 = interp1d(kCeO2Dat[:,0]*1E-9,kCeO2Dat[:,1])
-nAu = interp1d(nAuDat[:,0]*1E-6,nAuDat[:,1])
-kAu = interp1d(kAuDat[:,0]*1E-6,kAuDat[:,1])
+nCeO2 = interp1d(nCeO2Dat[:,0]*1E-9,nCeO2Dat[:,1],fill_value='extrapolate')
+kCeO2 = interp1d(kCeO2Dat[:,0]*1E-9,kCeO2Dat[:,1],fill_value='extrapolate')
+nAu = interp1d(nAuDat[:,0]*1E-6,nAuDat[:,1],fill_value='extrapolate')
+kAu = interp1d(kAuDat[:,0]*1E-6,kAuDat[:,1],fill_value='extrapolate')
 solI = interp1d(solarDat[:,0]*1E-9,solarDat[:,3])
 
 tlams = np.linspace(280E-9,1000E-9,100)
@@ -43,9 +52,8 @@ plt.plot(tlams,kCeO2(tlams),'--r',label='shell k')
 plt.plot(tlams,nAu(tlams),'-b',label='core n')
 plt.plot(tlams,kAu(tlams),'--b',label='core k')
 plt.legend()
-plt.show()
 
-rcore = 30E-9
+rcore = 35E-9
 rrefvac = 1.0
 
 lammin = 280.E-9
@@ -53,7 +61,7 @@ lammax = 1200.E-9
 nlams = 1200
 lams = np.linspace(lammin,lammax,nlams)
 
-rshells = np.linspace(rcore,rcore*3,5)
+rshells = np.linspace(rcore,rcore*2,5)
 rrefrefs = np.linspace(1.0,2.35,5)
 
 plt.figure()
@@ -88,7 +96,7 @@ for rshell in rshells:
     if newmax > qabsmax:
         qabsmax = newmax
     qabsint = simps(qabss,lams)*1.E6
-    print("integral over Qabs for rshell = " + str(rshell) + " = " + str(qabsint) )
+    print("integral over Qabs for rshell = " + str(rshell) + " = " + str(qabsint)) 
     datout.append(qabss)
     filehead += "Qabs--" + str(round((rshell-rcore)*1.E9)) + "nm[1] "
     plt.plot(lams*1E9,qabss, label="t="+str(round((rshell-rcore)*1E9,1))+'nm')
