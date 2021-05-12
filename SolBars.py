@@ -37,6 +37,8 @@ class NCNP:
         self.rshell = rcore+tshell
         self.vol = 4./3.*np.pi*(rcore+tshell)**3.
         self.cs = np.pi*(rcore+tshell)**2.
+        self.qabs = []
+        self.CR = 0
 
 nCeO2 = np.loadtxt("./data/nDataPatsalas950.txt",delimiter=",")
 nCeO2[:,0] = nCeO2[:,0]*1E-3
@@ -59,25 +61,30 @@ SiCCeO2 = NCNP('SiC',nSiC,kSiC,'CeO2',nCeO2,kCeO2,80E-9,20e-9)
 B4CCeO2 = NCNP('B4C',nB4C,kB4C,'CeO2',nCeO2,kCeO2,80E-9,30e-9)
 TiNCeO2 = NCNP('TiN',nTiN,kTiN,'CeO2',nCeO2,kCeO2,50E-9,12.5e-9)
 ZrNCeO2 = NCNP('ZrN',nZrN,kZrN,'CeO2',nCeO2,kCeO2,35E-9,10E-9)
-JustCeO2 = NCNP('CeO2',nCeO2,kCeO2,'CeO2',nCeO2,kCeO2,50E-9,12.5e-9)
+JustCeO2 = NCNP('CeO2',nCeO2,kCeO2,'CeO2',nCeO2,kCeO2,50E-9,10e-9)
+JustGold = NCNP('Au',nAu,kAu,'Au',nAu,kAu,15E-9,15E-9)
 
 candidates = [AuCeO2,SiCCeO2,B4CCeO2,TiNCeO2,ZrNCeO2,JustCeO2]
+#candidates = [AuCeO2,SiCCeO2,B4CCeO2,TiNCeO2,ZrNCeO2,JustCeO2,JustGold]
+
+
 
 solarDat = np.genfromtxt("./data/ASTMG173.csv",delimiter=",",skip_header = 2)
-solI = interp1d(solarDat[:,0]*1E-9,solarDat[:,3])
+solI = interp1d(solarDat[:,0]*1E-9,solarDat[:,2])
 
 tlams = np.linspace(280E-9,1000E-9,100)
 
 which = 4
 cand = candidates[which]
 
-
-plt.figure()
-plt.plot(tlams,cand.ncore(tlams),'-r',label='core n')
-plt.plot(tlams,cand.kcore(tlams),'--r',label='core k')
-plt.plot(tlams,cand.nshell(tlams),'-b',label='shell n')
-plt.plot(tlams,cand.kshell(tlams),'--b',label='shell k')
-plt.legend()
+plotnk = False
+if plotnk:
+    plt.figure()
+    plt.plot(tlams,cand.ncore(tlams),'-r',label='core n')
+    plt.plot(tlams,cand.kcore(tlams),'--r',label='core k')
+    plt.plot(tlams,cand.nshell(tlams),'-b',label='shell n')
+    plt.plot(tlams,cand.kshell(tlams),'--b',label='shell k')
+    plt.legend()
 
 
 
@@ -92,7 +99,7 @@ plt.figure()
 plt.plot(lams*1E9,solI(lams)/np.max(solI(lams)),linestyle='--',color='goldenrod')
 
 #show emission spectrum
-temp = 1300
+temp = 1273.15
 #plt.plot(lams*1E9,planck(lams,temp)/np.max(planck(lams,temp)))
 plt.plot(lams*1E9,planck(lams,temp)/np.max(solI(lams)),'--r')
 #print planck(lams,800)
@@ -110,6 +117,9 @@ CRps = []
 for can in candidates:
     cabss = []
     qabss = []
+    cabss_ns = []
+    qabss_ns = []
+    
     
     for lam in lams:
         xcore = 2.*np.pi*can.rcore*rrefvac/lam
@@ -117,22 +127,36 @@ for can in candidates:
         rrefcore = can.ncore(lam) + can.kcore(lam)*1j
         rrefshell = can.nshell(lam) + can.kshell(lam)*1j
         [qext, qsca, qback, gsca] = bhcoat_pyed.bhcoat(xcore, xshell, rrefcore, rrefshell)
+        
         cabss.append((qext-qsca)*can.cs)
         qabss.append(qext-qsca)
+        
+        can.qabs = qabss
+        
+        rrefnoshell = JustCeO2.ncore(lam) + JustCeO2.kcore(lam)*1j
+        [qext_ns, qsca_ns, qback, gsca] = bhcoat_pyed.bhcoat(xcore, xshell, rrefnoshell, rrefnoshell)
+        
+        cabss_ns.append((qext_ns-qsca_ns)*can.cs)
+        
+        
   
     plt.plot(lams*1E9,qabss, label=can.corename + '-' + can.shellname)
     
     #get power absorbed per volume
 
     Psolwt = simps(cabss*solI(lams),lams)*1.E9
+    Psolwt_ns = simps(cabss_ns*solI(lams),lams)*1.E9
     Phit = simps(can.cs*solI(lams),lams)*1.E9
     Pcheck = simps(solI(lams),lams)*1.e9
     print(Pcheck)
     Psolwts.append(Psolwt)
     Ppervol = Psolwt/can.vol
     Ppervols.append(Ppervol)
-    CRp = Psolwt/Pcheck/can.cs
+    CRp = Psolwt/Psolwt_ns
     CRps.append(CRp)
+    can.CR = CRp
+
+#CRps.append(1)
 
 plt.plot(lams*1E9,np.ones(np.shape(lams)),color='darkgray',linestyle='--' , label="max for bulk materials")
 
@@ -150,13 +174,15 @@ barx = []
 for can in candidates:
     barx.append(can.corename)
 
+#barx.append('pure ceria')
+
+'''
 print(barx)
 print(Ppervols)
 plt.figure()
 plt.bar(barx,Ppervols)
 plt.ylabel('P_abs/vol, W/m^3')
 
-'''
 plt.figure()
 plt.bar(barx,Psolwts)
 plt.ylabel('P_{abs,sol}, -')
@@ -168,3 +194,45 @@ plt.ylabel('$CR_{particle}$')
 
 plt.show()
 
+
+datout = []
+filehead = "wavelength[nm] "
+datout.append(np.transpose(lams*1.E9))
+
+datout.append(solI(lams))
+datout.append(planck(lams,temp))
+filehead += "Solar Irradiance[W/m^2/nm] " + "BB intensity@" + str(temp)+"K[W/m^2/nm]"
+
+
+for can in candidates:
+    filehead += ' ' + can.corename + ' (' + str(can.rcore) + ' m core + ' + str(can.tshell) + ' m shell)'  
+    datout.append(can.qabs)
+
+datout = np.array(datout)
+np.savetxt('forSETO2021spectra.dat',np.transpose(datout),delimiter=' ',header=filehead)
+
+datout = []
+filehead = ''
+
+for can in candidates:
+    filehead += ' ' + can.corename
+    datout.append([can.CR])
+
+datout = np.array(datout)
+np.savetxt('forSETO2021bars.dat',np.transpose(datout),delimiter=' ',header=filehead)
+
+'''
+print('lams')
+print(tlams)
+
+for can in candidates:
+    print(can.corename)
+    print(can.qabs)
+    print(can.CR)
+    
+print('solar')
+print(solI(tlams)/np.max(solI(tlams)))
+
+print('plank')
+print(planck(tlams,temp)/np.max(solI(tlams)))
+'''
